@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExtensionManifest Version="7.0" ExtensionBundleId="com.jazza.drawingrecorder" ExtensionBundleVersion="1.0.0"
+                   ExtensionBundleName="Drawing Recorder"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <ExtensionList>
+        <Extension Id="com.jazza.drawingrecorder.panel" Version="1.0.0"/>
+    </ExtensionList>
+    <ExecutionEnvironment>
+        <HostList>
+            <!-- PHXS = Photoshop, PHSP = Photoshop (extended/standard) -->
+            <Host Name="PHXS" Version="20.0" />
+            <Host Name="PHSP" Version="20.0" />
+        </HostList>
+        <LocaleList>
+            <Locale Code="All"/>
+        </LocaleList>
+        <RequiredRuntimeList>
+            <RequiredRuntime Name="CSXS" Version="9.0"/>
+        </RequiredRuntimeList>
+    </ExecutionEnvironment>
+    <DispatchInfoList>
+        <Extension Id="com.jazza.drawingrecorder.panel">
+            <DispatchInfo>
+                <Resources>
+                    <MainPath>./client/index.html</MainPath>
+                    <ScriptPath>./host/hostscript.jsx</ScriptPath>
+                    <CEFCommandLine>
+                        <Parameter>--enable-nodejs</Parameter>
+                        <Parameter>--allow-file-access-from-files</Parameter>
+                        <Parameter>--allow-file-access</Parameter>
+                        <Parameter>--disable-background-timer-throttling</Parameter>
+                        <Parameter>--disable-renderer-backgrounding</Parameter>
+                    </CEFCommandLine>
+                </Resources>
+                <Lifecycle>
+                    <AutoVisible>true</AutoVisible>
+                </Lifecycle>
+                <UI>
+                    <Type>Panel</Type>
+                    <Menu>Drawing Recorder</Menu>
+                    <Geometry>
+                        <Size>
+                            <Height>500</Height>
+                            <Width>320</Width>
+                        </Size>
+                        <MinSize>
+                            <Height>60</Height>
+                            <Width>200</Width>
+                        </MinSize>
+                        <MaxSize>
+                            <Height>800</Height>
+                            <Width>500</Width>
+                        </MaxSize>
+                    </Geometry>
+                    <Icons/>
+                </UI>
+            </DispatchInfo>
+        </Extension>
+    </DispatchInfoList>
+</ExtensionManifest>
