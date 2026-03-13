@@ -45,7 +45,8 @@
         cropTop: 0,
         cropLeft: 0,
         cropRight: 0,
-        cropBottom: 0
+        cropBottom: 0,
+        smoothTransitions: false
     };
 
     // ============ FFmpeg codec configs ============
@@ -97,7 +98,8 @@
         cropTop: document.getElementById("cropTop"),
         cropLeft: document.getElementById("cropLeft"),
         cropRight: document.getElementById("cropRight"),
-        cropBottom: document.getElementById("cropBottom")
+        cropBottom: document.getElementById("cropBottom"),
+        chkSmoothTransitions: document.getElementById("chkSmoothTransitions")
     };
 
     // ============ Initialization ============
@@ -133,7 +135,7 @@
         el.frameHold.addEventListener("change", onFrameHoldChange);
         el.resScale.addEventListener("change", onResScaleChange);
         el.chkDeleteFrames.addEventListener("change", onDeleteFramesChange);
-
+        el.chkSmoothTransitions.addEventListener("change", onSmoothTransitionsChange);
 
         el.btnMinPause.addEventListener("click", onPauseClick);
         el.btnMinStop.addEventListener("click", onStopClick);
@@ -298,6 +300,10 @@
                     state.cropBottom = s.cropBottom;
                     el.cropBottom.value = s.cropBottom;
                 }
+                if (s.smoothTransitions !== undefined) {
+                    state.smoothTransitions = s.smoothTransitions;
+                    el.chkSmoothTransitions.checked = s.smoothTransitions;
+                }
             }
         } catch (e) { }
     }
@@ -315,7 +321,8 @@
                 cropTop: state.cropTop,
                 cropLeft: state.cropLeft,
                 cropRight: state.cropRight,
-                cropBottom: state.cropBottom
+                cropBottom: state.cropBottom,
+                smoothTransitions: state.smoothTransitions
             }));
         } catch (e) { }
     }
@@ -413,7 +420,7 @@
 
                 updateUI("recording");
                 log("success", "Recording started: " + state.sessionName);
-                log("info", "Interval: " + (state.intervalMs / 1000) + "s | Format: " + state.videoFormat.toUpperCase() + " | Doc: " + docInfo.name);
+                log("info", "Interval: " + (state.intervalMs / 1000) + "s | Format: " + state.videoFormat.toUpperCase() + " | Doc: " + docInfo.name + (state.smoothTransitions ? " | Smooth ON" : ""));
 
                 // Start capture interval (setInterval — immune to hung evalScript)
                 state.captureBusy = false;
@@ -576,13 +583,23 @@
         ];
 
         var sf = state.resScale || 1;
+        var vfFilters = [];
         if (sf > 1) {
             // Downscale and ensure even dimensions for yuv420p
-            args.push("-vf", "scale=iw/" + sf + ":ih/" + sf + ",crop=trunc(iw/2)*2:trunc(ih/2)*2");
-        } else {
-            // Just ensure even dimensions (screen res is almost always even, but just in case)
-            args.push("-vf", "crop=trunc(iw/2)*2:trunc(ih/2)*2");
+            vfFilters.push("scale=iw/" + sf + ":ih/" + sf);
         }
+
+        // Ensure even dimensions (required for yuv420p)
+        vfFilters.push("crop=trunc(iw/2)*2:trunc(ih/2)*2");
+
+        if (state.smoothTransitions) {
+            // framerate filter with full blending: interp_start=0 (blend from beginning),
+            // interp_end=255 (blend until end), scene=100 (disable scene change detection
+            // so EVERY frame transition gets blended). This produces a visible crossfade.
+            vfFilters.push("framerate=fps=30:interp_start=0:interp_end=255:scene=100");
+        }
+
+        args.push("-vf", vfFilters.join(","));
 
         args = args.concat(codec.extra);
         args.push(outputFile);
@@ -731,6 +748,11 @@
         state.cropLeft = parseInt(el.cropLeft.value, 10) || 0;
         state.cropRight = parseInt(el.cropRight.value, 10) || 0;
         state.cropBottom = parseInt(el.cropBottom.value, 10) || 0;
+        saveSettings();
+    }
+
+    function onSmoothTransitionsChange() {
+        state.smoothTransitions = el.chkSmoothTransitions.checked;
         saveSettings();
     }
 
