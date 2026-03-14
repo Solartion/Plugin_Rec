@@ -1,13 +1,8 @@
-/**
- * Drawing Recorder — Main Panel Logic v2.0
- * Records drawing process and encodes to video via FFmpeg
- * Supports: MP4, MKV, MOV, AVI, WebM
- */
+
 
 (function () {
     "use strict";
 
-    // ============ CEP & Node.js Setup ============
     var csInterface = new CSInterface();
     var path, fs, childProcess, nodeTimers;
     try {
@@ -16,10 +11,9 @@
         childProcess = require("child_process");
         nodeTimers = require("timers");
     } catch (e) {
-        // Will be handled in init
+
     }
 
-    // ============ State ============
     var state = {
         recording: false,
         paused: false,
@@ -52,7 +46,6 @@
         mouseWatcher: null
     };
 
-    // ============ FFmpeg codec configs ============
     var CODECS = {
         mp4: { ext: "mp4", vcodec: "libx264", pix: "yuv420p", extra: ["-preset", "medium", "-crf", "23"] },
         mkv: { ext: "mkv", vcodec: "libx264", pix: "yuv420p", extra: ["-preset", "medium", "-crf", "23"] },
@@ -61,7 +54,6 @@
         webm: { ext: "webm", vcodec: "libvpx-vp9", pix: "yuv420p", extra: ["-b:v", "2M", "-crf", "30"] }
     };
 
-    // ============ DOM Elements ============
     var el = {
         statusBadge: document.getElementById("statusBadge"),
         statusText: document.getElementById("statusText"),
@@ -91,7 +83,6 @@
         encodingStatus: document.getElementById("encodingStatus"),
         encodingFill: document.getElementById("encodingFill"),
 
-        // Minimal UI
         mainUI: document.getElementById("mainUI"),
         minimalUI: document.getElementById("minimalUI"),
         minDot: document.getElementById("minDot"),
@@ -105,7 +96,6 @@
         chkSmoothTransitions: document.getElementById("chkSmoothTransitions")
     };
 
-    // ============ Initialization ============
     function init() {
         loadSettings();
         bindEvents();
@@ -114,7 +104,6 @@
         csInterface.addEventListener("documentAfterActivate", refreshDocInfo);
         csInterface.addEventListener("documentAfterDeactivate", refreshDocInfo);
 
-        // Detect FFmpeg lazily to avoid freezing Photoshop on startup
         if (childProcess) {
             setTimeout(detectFFmpeg, 2000);
         }
@@ -145,18 +134,15 @@
         el.btnMinStop.addEventListener("click", onStopClick);
     }
 
-    // ============ FFmpeg Detection ============
     function detectFFmpeg() {
-        // If saved path exists on disk, trust it without spawning a process
+
         if (state.ffmpegPath && fs.existsSync(state.ffmpegPath)) {
             setFFmpegUI(state.ffmpegPath);
             return;
         }
 
-        // Build list of paths to check
         var candidates = [];
 
-        // 1. Relative to this JS file's directory (client/) -> ../tools/
         try {
             var dirName = __dirname || "";
             if (dirName) {
@@ -164,18 +150,16 @@
             }
         } catch (e) { }
 
-        // 2. Via CSInterface extension path
         try {
             var extPath = csInterface.getSystemPath("extension");
             if (extPath) {
-                // CEP may return path with leading / on Windows like /c/Users/...
+
                 var normalized = extPath.replace(/^\/([a-zA-Z])\//, "$1:/").replace(/\//g, "\\");
                 candidates.push(path.join(normalized, "tools", "ffmpeg.exe"));
                 candidates.push(path.join(extPath, "tools", "ffmpeg.exe"));
             }
         } catch (e) { }
 
-        // 3. Try each candidate
         for (var i = 0; i < candidates.length; i++) {
             var c = candidates[i];
             try {
@@ -189,7 +173,6 @@
             } catch (e) { }
         }
 
-        // 4. Try system PATH
         var cmd = process.platform === "win32" ? "where ffmpeg" : "which ffmpeg";
         try {
             var result = childProcess.execSync(cmd, { encoding: "utf8", timeout: 5000 });
@@ -252,7 +235,6 @@
         });
     }
 
-    // ============ Settings Persistence ============
     function loadSettings() {
         try {
             var saved = localStorage.getItem("drawingRecorderSettings_v2");
@@ -331,7 +313,6 @@
         } catch (e) { }
     }
 
-    // ============ Document Info ============
     function refreshDocInfo() {
         evalScript("getDocumentInfo()", function (result) {
             if (!result || result === "undefined" || result === "null") {
@@ -356,7 +337,6 @@
         el.docInfo.querySelector(".doc-info-content").style.display = "none";
     }
 
-    // ============ Recording Control ============
     function onRecordClick() {
         if (state.recording || state.encoding) return;
 
@@ -427,16 +407,13 @@
                 log("success", "Recording started: " + state.sessionName);
                 log("info", "Interval: " + (state.intervalMs / 1000) + "s | Format: " + state.videoFormat.toUpperCase() + " | Doc: " + docInfo.name + (state.smoothTransitions ? " | Smooth ON" : ""));
 
-                // Start mouse watcher for drawing detection
                 startMouseWatcher();
 
-                // Start capture interval (setInterval — immune to hung evalScript)
                 state.captureBusy = false;
                 state.captureLastTime = Date.now();
                 var setInt2 = nodeTimers ? nodeTimers.setInterval : setInterval;
                 state.captureTimer = setInt2(captureLoop, state.intervalMs);
 
-                // Capture first frame immediately
                 captureLoop();
 
                 var setInt = nodeTimers ? nodeTimers.setInterval : setInterval;
@@ -488,7 +465,6 @@
         }
     }
 
-    // ============ Mouse Watcher (defers capture while user is drawing) ============
     function startMouseWatcher() {
         if (!childProcess) return;
         try {
@@ -505,7 +481,7 @@
 
             state.mouseWatcher.stdout.on("data", function (data) {
                 var line = data.toString().trim();
-                // Only care about the last state in a batch
+
                 var lines = line.split("\n");
                 var last = lines[lines.length - 1].trim();
                 state.mouseDown = (last === "DOWN");
@@ -533,15 +509,12 @@
         }
     }
 
-    // ============ JSX Capture Loop (setInterval-based, immune to hung callbacks) ============
     function captureLoop() {
         if (!state.recording || state.paused) return;
 
-        // Defer capture while user is actively drawing (mouse button down)
         if (state.mouseDown) return;
 
-        // If the previous evalScript call hasn't returned yet, skip
-        // But if it's been stuck for >30s, force-reset (safety valve)
+
         if (state.captureBusy) {
             if (Date.now() - state.captureLastTime > 30000) {
                 log("warning", "Capture hung >30s, resetting...");
@@ -563,7 +536,7 @@
         var script = 'captureFrame("' + folder + '", ' + (state.frameCount + 1) + ', ' + q + ', ' + sf + ', ' + isFirst + ', "' + docName + '")';
 
         evalScript(script, function (result) {
-            // Add a small cooldown after capture to let PS breathe (reduces micro-freezes)
+
             var setTO = nodeTimers ? nodeTimers.setTimeout : setTimeout;
             setTO(function () { state.captureBusy = false; }, 500);
             if (!state.recording) return;
@@ -590,20 +563,16 @@
         });
     }
 
-
-    // ============ Video Encoding ============
     function encodeVideo() {
         state.encoding = true;
         var codec = CODECS[state.videoFormat];
 
-        // Normalize paths to forward slashes — FFmpeg on Windows handles
-        // forward slashes fine, but can choke on backslashes in patterns
+
         var sessionNorm = state.sessionFolder.replace(/\\/g, "/");
         var outputNorm = state.outputFolder.replace(/\\/g, "/");
         var inputPattern = sessionNorm + "/frame_%05d.jpg";
         var outputFile = outputNorm + "/" + state.sessionName + "." + codec.ext;
 
-        // Verify frames exist before attempting to encode
         try {
             var files = fs.readdirSync(state.sessionFolder);
             var jpgCount = 0;
@@ -629,7 +598,6 @@
         el.encodingStatus.textContent = "Encoding video...";
         el.encodingFill.style.width = "0%";
 
-        // Disable controls during encoding
         el.btnRecord.disabled = true;
 
         var inputFps = String(Math.round(1 / state.frameHold * 100) / 100);
@@ -646,17 +614,16 @@
         var sf = state.resScale || 1;
         var vfFilters = [];
         if (sf > 1) {
-            // Downscale during encoding (frames saved at full res for speed)
+
             vfFilters.push("scale=iw/" + sf + ":ih/" + sf);
         }
 
-        // Ensure even dimensions (required for yuv420p)
         vfFilters.push("crop=trunc(iw/2)*2:trunc(ih/2)*2");
 
         if (state.smoothTransitions) {
-            // framerate filter with full blending: interp_start=0 (blend from beginning),
-            // interp_end=255 (blend until end), scene=100 (disable scene change detection
-            // so EVERY frame transition gets blended). This produces a visible crossfade.
+
+
+
             vfFilters.push("framerate=fps=30:interp_start=0:interp_end=255:scene=100");
         }
 
@@ -678,7 +645,6 @@
             var str = data.toString();
             stderrData += str;
 
-            // Parse progress from ffmpeg stderr (frame= N)
             var frameMatch = str.match(/frame=\s*(\d+)/);
             if (frameMatch) {
                 var currentFrame = parseInt(frameMatch[1], 10);
@@ -705,19 +671,17 @@
                 el.encodingStatus.textContent = "Done!";
                 log("success", "Video saved: " + outputFile);
 
-                // Delete frames if checked
                 if (state.deleteFrames) {
                     deleteFrameFiles();
                 }
 
-                // Hide encoding UI after 5 seconds
                 setTimeout(function () {
                     el.encodingSection.style.display = "none";
                 }, 5000);
             } else {
                 el.encodingSection.style.display = "none";
                 log("error", "FFmpeg exit code: " + code);
-                // Show last few lines of stderr for debugging
+
                 var lines = stderrData.trim().split("\n");
                 var lastLines = lines.slice(-3).join(" | ");
                 log("error", "FFmpeg: " + lastLines);
@@ -735,7 +699,7 @@
                     deleted++;
                 }
             }
-            // Remove empty session folder
+
             try {
                 var remaining = fs.readdirSync(state.sessionFolder);
                 if (remaining.length === 0) {
@@ -748,7 +712,6 @@
         }
     }
 
-    // ============ Folder / FFmpeg Selection ============
     function onSelectFolder() {
         evalScript("selectFolder()", function (result) {
             if (!result || result === "undefined" || result === "EvalScript error") return;
@@ -768,14 +731,13 @@
         });
     }
 
-    // ============ Settings Events ============
     function onIntervalChange() {
         var val = parseInt(el.intervalSlider.value, 10);
         el.intervalValue.textContent = val;
         state.intervalMs = val * 1000;
         saveSettings();
         if (state.recording && state.captureTimer) {
-            // Restart capture interval with new interval
+
             var clrInt = nodeTimers ? nodeTimers.clearInterval : clearInterval;
             clrInt(state.captureTimer);
             var setInt = nodeTimers ? nodeTimers.setInterval : setInterval;
@@ -817,7 +779,6 @@
         saveSettings();
     }
 
-    // ============ UI Updates ============
     function updateUI(mode) {
         switch (mode) {
             case "recording":
@@ -903,7 +864,6 @@
         el.progressFill.style.width = "100%";
     }
 
-    // ============ Logging ============
     function log(type, message) {
         var entry = document.createElement("div");
         entry.className = "log-entry log-" + type;
@@ -917,7 +877,6 @@
         }
     }
 
-    // ============ Helpers ============
     function evalScript(script, callback) {
         csInterface.evalScript(script, callback || function () { });
     }
@@ -938,6 +897,5 @@
         return n < 10 ? "0" + n : "" + n;
     }
 
-    // ============ Start ============
     init();
 })();

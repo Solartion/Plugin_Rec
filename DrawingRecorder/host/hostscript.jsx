@@ -1,15 +1,5 @@
-/**
- * Drawing Recorder - ExtendScript Host
- * Handles canvas snapshots for Photoshop 2019-2022
- * NOTE: No JSON.stringify - ExtendScript is ES3
- */
-
-// Suppress all dialogs during automated operations
 var originalDialogMode = app.displayDialogs;
 
-/**
- * Escape a string for safe JSON embedding.
- */
 function escStr(s) {
     if (s === undefined || s === null) return "";
     s = String(s);
@@ -21,9 +11,6 @@ function escStr(s) {
     return s;
 }
 
-/**
- * Get information about the active document.
- */
 function getDocumentInfo() {
     try {
         if (!app.documents.length) {
@@ -49,9 +36,6 @@ function getDocumentInfo() {
     }
 }
 
-/**
- * Create output folder for the recording session.
- */
 function createOutputFolder(basePath, sessionName) {
     try {
         var baseFolder = new Folder(basePath);
@@ -68,9 +52,6 @@ function createOutputFolder(basePath, sessionName) {
     }
 }
 
-/**
- * Select a folder using OS native dialog.
- */
 function selectFolder() {
     try {
         var folder = Folder.selectDialog("Select folder for recording frames");
@@ -86,10 +67,6 @@ function selectFolder() {
 
 var _lastHistoryId = null;
 
-/**
- * Save JPEG using fast ActionDescriptor method.
- * Works on the currently active document.
- */
 function _saveJpegFast(file, q) {
     var idsave = charIDToTypeID("save");
     var desc3 = new ActionDescriptor();
@@ -105,9 +82,6 @@ function _saveJpegFast(file, q) {
     executeAction(idsave, desc3, DialogModes.NO);
 }
 
-/**
- * Save JPEG using the fallback doc.saveAs method.
- */
 function _saveJpegFallback(doc, file, q) {
     var jpegOpts = new JPEGSaveOptions();
     jpegOpts.quality = q;
@@ -116,15 +90,6 @@ function _saveJpegFallback(doc, file, q) {
     doc.saveAs(file, jpegOpts, true, Extension.LOWERCASE);
 }
 
-/**
- * Capture the current canvas state as a JPEG frame.
- *
- * Uses the fastest possible method: direct Save As Copy via ActionDescriptor.
- * This is a single optimized C++ operation inside Photoshop — no flatten,
- * resize, or duplicate steps that would add to freeze time.
- * Downscaling is delegated to FFmpeg during encoding.
- * Skips capture if the document history hasn't changed (user is idle).
- */
 function captureFrame(outputFolder, frameNumber, quality, scaleFactor, force, recordingDocName) {
     try {
         if (!app.documents.length) {
@@ -133,7 +98,6 @@ function captureFrame(outputFolder, frameNumber, quality, scaleFactor, force, re
 
         var doc = app.activeDocument;
 
-        // Skip capture if the active document is not the one being recorded
         if (recordingDocName && doc.name !== recordingDocName) {
             return '{"error":"WRONG_DOCUMENT"}';
         }
@@ -141,7 +105,6 @@ function captureFrame(outputFolder, frameNumber, quality, scaleFactor, force, re
         var savedDialogs = app.displayDialogs;
         app.displayDialogs = DialogModes.NO;
 
-        // Check history state to avoid saving if no changes
         try {
             var histId = doc.activeHistoryState.name + "_" + doc.historyStates.length;
             if (!force && _lastHistoryId === histId) {
@@ -155,12 +118,9 @@ function captureFrame(outputFolder, frameNumber, quality, scaleFactor, force, re
         var fileName = "frame_" + padded + ".jpg";
         var file = new File(outputFolder + "/" + fileName);
 
-        // Quality 1-12
         var q = (quality && quality > 0) ? quality : 5;
         if (q > 12) { q = Math.round(q * 12 / 100); }
 
-        // Direct Save As Copy — single Photoshop operation, fastest possible path.
-        // Downscaling is handled by FFmpeg during encoding, not here.
         try {
             _saveJpegFast(file, q);
         } catch (se) {
@@ -183,9 +143,6 @@ function captureFrame(outputFolder, frameNumber, quality, scaleFactor, force, re
     }
 }
 
-/**
- * Check if a folder exists.
- */
 function checkFolder(folderPath) {
     try {
         var folder = new Folder(folderPath);
@@ -196,9 +153,6 @@ function checkFolder(folderPath) {
     }
 }
 
-/**
- * Select FFmpeg executable via OS file dialog.
- */
 function selectFFmpeg() {
     try {
         var f = File.openDialog("Select ffmpeg executable", "ffmpeg*");
@@ -211,4 +165,3 @@ function selectFFmpeg() {
         return '{"error":"SELECT_ERROR","message":"' + escStr(e.message) + '"}';
     }
 }
-
