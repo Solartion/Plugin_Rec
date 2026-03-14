@@ -87,12 +87,45 @@ function selectFolder() {
 var _lastHistoryId = null;
 
 /**
- * Capture the current canvas state as a JPEG frame.
- * OPTIMIZED: Uses ActionDescriptor to instantly save a flattened JPEG copy
- * without actually modifying the document tree, making it virtually freeze-free.
- * Reverts to skip if the user's history state has not changed (i.e. idle).
+ * Save JPEG using fast ActionDescriptor method.
+ * Works on the currently active document.
  */
-function captureFrame(outputFolder, frameNumber, quality, forceScaleIgnored, force, recordingDocName) {
+function _saveJpegFast(file, q) {
+    var idsave = charIDToTypeID("save");
+    var desc3 = new ActionDescriptor();
+    var idAs = charIDToTypeID("As  ");
+    var desc4 = new ActionDescriptor();
+    desc4.putInteger(charIDToTypeID("EQlt"), q);
+    desc4.putEnumerated(stringIDToTypeID("matteColor"), stringIDToTypeID("matteColor"), charIDToTypeID("None"));
+    desc3.putObject(idAs, charIDToTypeID("JPEG"), desc4);
+    desc3.putPath(charIDToTypeID("In  "), file);
+    desc3.putBoolean(charIDToTypeID("LwCs"), true);
+    desc3.putBoolean(charIDToTypeID("docI"), true);
+    desc3.putBoolean(charIDToTypeID("Cpy "), true);
+    executeAction(idsave, desc3, DialogModes.NO);
+}
+
+/**
+ * Save JPEG using the fallback doc.saveAs method.
+ */
+function _saveJpegFallback(doc, file, q) {
+    var jpegOpts = new JPEGSaveOptions();
+    jpegOpts.quality = q;
+    jpegOpts.embedColorProfile = false;
+    jpegOpts.formatOptions = FormatOptions.STANDARDBASELINE;
+    doc.saveAs(file, jpegOpts, true, Extension.LOWERCASE);
+}
+
+/**
+ * Capture the current canvas state as a JPEG frame.
+ *
+ * Uses the fastest possible method: direct Save As Copy via ActionDescriptor.
+ * This is a single optimized C++ operation inside Photoshop — no flatten,
+ * resize, or duplicate steps that would add to freeze time.
+ * Downscaling is delegated to FFmpeg during encoding.
+ * Skips capture if the document history hasn't changed (user is idle).
+ */
+function captureFrame(outputFolder, frameNumber, quality, scaleFactor, force, recordingDocName) {
     try {
         if (!app.documents.length) {
             return '{"error":"NO_DOCUMENT","message":"No open document"}';
@@ -104,6 +137,7 @@ function captureFrame(outputFolder, frameNumber, quality, forceScaleIgnored, for
         if (recordingDocName && doc.name !== recordingDocName) {
             return '{"error":"WRONG_DOCUMENT"}';
         }
+
         var savedDialogs = app.displayDialogs;
         app.displayDialogs = DialogModes.NO;
 
@@ -125,40 +159,16 @@ function captureFrame(outputFolder, frameNumber, quality, forceScaleIgnored, for
         var q = (quality && quality > 0) ? quality : 5;
         if (q > 12) { q = Math.round(q * 12 / 100); }
 
+        // Direct Save As Copy — single Photoshop operation, fastest possible path.
+        // Downscaling is handled by FFmpeg during encoding, not here.
         try {
-            // Very fast direct ActionDescriptor JPEG Save As Copy
-            var idsave = charIDToTypeID("save");
-            var desc3 = new ActionDescriptor();
-            var idAs = charIDToTypeID("As  ");
-            var desc4 = new ActionDescriptor();
-            var idEQlt = charIDToTypeID("EQlt");
-            desc4.putInteger(idEQlt, q);
-            var idMatteColor = stringIDToTypeID("matteColor");
-            var idMatteColorEnum = stringIDToTypeID("matteColor");
-            var idNone = charIDToTypeID("None");
-            desc4.putEnumerated(idMatteColor, idMatteColorEnum, idNone);
-            var idJPEG = charIDToTypeID("JPEG");
-            desc3.putObject(idAs, idJPEG, desc4);
-            var idIn = charIDToTypeID("In  ");
-            desc3.putPath(idIn, file);
-            var idLwCs = charIDToTypeID("LwCs");
-            desc3.putBoolean(idLwCs, true);
-            var iddocI = charIDToTypeID("docI");
-            desc3.putBoolean(iddocI, true); // As Copy
-            var idCpy = charIDToTypeID("Cpy ");
-            desc3.putBoolean(idCpy, true); // Save as copy
-            executeAction(idsave, desc3, DialogModes.NO);
+            _saveJpegFast(file, q);
         } catch (se) {
-            // Fallback for any compatibility reason
-            var jpegOpts = new JPEGSaveOptions();
-            jpegOpts.quality = q;
-            jpegOpts.embedColorProfile = false;
-            jpegOpts.formatOptions = FormatOptions.STANDARDBASELINE;
             try {
-                doc.saveAs(file, jpegOpts, true, Extension.LOWERCASE);
+                _saveJpegFallback(doc, file, q);
             } catch (saveErr) {
                 app.displayDialogs = savedDialogs;
-                return '{"error":"SAVE_ERROR", "message":"' + escStr(saveErr.message) + '"}';
+                return '{"error":"SAVE_ERROR","message":"' + escStr(saveErr.message) + '"}';
             }
         }
 

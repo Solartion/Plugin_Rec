@@ -47,7 +47,9 @@
         cropRight: 0,
         cropBottom: 0,
         smoothTransitions: true,
-        recordingDocName: ""
+        recordingDocName: "",
+        mouseDown: false,
+        mouseWatcher: null
     };
 
     // ============ FFmpeg codec configs ============
@@ -120,6 +122,7 @@
         window.addEventListener("beforeunload", function () {
             var clrInt = nodeTimers ? nodeTimers.clearInterval : clearInterval;
             if (state.captureTimer) clrInt(state.captureTimer);
+            stopMouseWatcher();
         });
 
         log("info", "Drawing Recorder v2.0 loaded.");
@@ -424,6 +427,9 @@
                 log("success", "Recording started: " + state.sessionName);
                 log("info", "Interval: " + (state.intervalMs / 1000) + "s | Format: " + state.videoFormat.toUpperCase() + " | Doc: " + docInfo.name + (state.smoothTransitions ? " | Smooth ON" : ""));
 
+                // Start mouse watcher for drawing detection
+                startMouseWatcher();
+
                 // Start capture interval (setInterval — immune to hung evalScript)
                 state.captureBusy = false;
                 state.captureLastTime = Date.now();
@@ -464,6 +470,7 @@
         state.paused = false;
         state.captureBusy = false;
         state.recordingDocName = "";
+        stopMouseWatcher();
 
         var clrInt = nodeTimers ? nodeTimers.clearInterval : clearInterval;
         clrInt(state.elapsedTimer);
@@ -481,9 +488,57 @@
         }
     }
 
+    // ============ Mouse Watcher (defers capture while user is drawing) ============
+    function startMouseWatcher() {
+        if (!childProcess) return;
+        try {
+            var scriptPath = path.resolve(__dirname || ".", "..", "tools", "mouse_watcher.ps1");
+            if (!fs.existsSync(scriptPath)) {
+                log("warning", "mouse_watcher.ps1 not found, drawing detection disabled");
+                return;
+            }
+            state.mouseWatcher = childProcess.spawn("powershell.exe", [
+                "-ExecutionPolicy", "Bypass",
+                "-NoProfile",
+                "-File", scriptPath
+            ], { windowsHide: true });
+
+            state.mouseWatcher.stdout.on("data", function (data) {
+                var line = data.toString().trim();
+                // Only care about the last state in a batch
+                var lines = line.split("\n");
+                var last = lines[lines.length - 1].trim();
+                state.mouseDown = (last === "DOWN");
+            });
+
+            state.mouseWatcher.on("error", function () {
+                state.mouseDown = false;
+                state.mouseWatcher = null;
+            });
+
+            state.mouseWatcher.on("close", function () {
+                state.mouseDown = false;
+                state.mouseWatcher = null;
+            });
+        } catch (e) {
+            log("warning", "Mouse watcher failed: " + e.message);
+        }
+    }
+
+    function stopMouseWatcher() {
+        if (state.mouseWatcher) {
+            try { state.mouseWatcher.kill(); } catch (e) { }
+            state.mouseWatcher = null;
+            state.mouseDown = false;
+        }
+    }
+
     // ============ JSX Capture Loop (setInterval-based, immune to hung callbacks) ============
     function captureLoop() {
         if (!state.recording || state.paused) return;
+
+        // Defer capture while user is actively drawing (mouse button down)
+        if (state.mouseDown) return;
 
         // If the previous evalScript call hasn't returned yet, skip
         // But if it's been stuck for >30s, force-reset (safety valve)
@@ -500,7 +555,7 @@
         state.captureLastTime = Date.now();
 
         var folder = escapeForScript(state.sessionFolder);
-        var q = 10;
+        var q = 4;
         var sf = state.resScale || 1;
         var isFirst = state.frameCount === 0 ? "true" : "false";
         var docName = escapeForScript(state.recordingDocName);
@@ -508,7 +563,9 @@
         var script = 'captureFrame("' + folder + '", ' + (state.frameCount + 1) + ', ' + q + ', ' + sf + ', ' + isFirst + ', "' + docName + '")';
 
         evalScript(script, function (result) {
-            state.captureBusy = false;
+            // Add a small cooldown after capture to let PS breathe (reduces micro-freezes)
+            var setTO = nodeTimers ? nodeTimers.setTimeout : setTimeout;
+            setTO(function () { state.captureBusy = false; }, 500);
             if (!state.recording) return;
 
             try {
@@ -589,7 +646,7 @@
         var sf = state.resScale || 1;
         var vfFilters = [];
         if (sf > 1) {
-            // Downscale and ensure even dimensions for yuv420p
+            // Downscale during encoding (frames saved at full res for speed)
             vfFilters.push("scale=iw/" + sf + ":ih/" + sf);
         }
 
