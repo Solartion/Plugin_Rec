@@ -92,13 +92,18 @@ var _lastHistoryId = null;
  * without actually modifying the document tree, making it virtually freeze-free.
  * Reverts to skip if the user's history state has not changed (i.e. idle).
  */
-function captureFrame(outputFolder, frameNumber, quality, forceScaleIgnored, force) {
+function captureFrame(outputFolder, frameNumber, quality, forceScaleIgnored, force, recordingDocName) {
     try {
         if (!app.documents.length) {
             return '{"error":"NO_DOCUMENT","message":"No open document"}';
         }
 
         var doc = app.activeDocument;
+
+        // Skip capture if the active document is not the one being recorded
+        if (recordingDocName && doc.name !== recordingDocName) {
+            return '{"error":"WRONG_DOCUMENT"}';
+        }
         var savedDialogs = app.displayDialogs;
         app.displayDialogs = DialogModes.NO;
 

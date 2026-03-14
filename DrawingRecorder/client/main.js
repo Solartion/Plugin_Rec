@@ -46,7 +46,8 @@
         cropLeft: 0,
         cropRight: 0,
         cropBottom: 0,
-        smoothTransitions: false
+        smoothTransitions: false,
+        recordingDocName: ""
     };
 
     // ============ FFmpeg codec configs ============
@@ -417,6 +418,7 @@
                 state.startTime = Date.now();
                 state.pausedTime = 0;
                 state.sessionFolder = res.path;
+                state.recordingDocName = docInfo.name;
 
                 updateUI("recording");
                 log("success", "Recording started: " + state.sessionName);
@@ -461,6 +463,7 @@
         state.recording = false;
         state.paused = false;
         state.captureBusy = false;
+        state.recordingDocName = "";
 
         var clrInt = nodeTimers ? nodeTimers.clearInterval : clearInterval;
         clrInt(state.elapsedTimer);
@@ -500,8 +503,9 @@
         var q = 10;
         var sf = state.resScale || 1;
         var isFirst = state.frameCount === 0 ? "true" : "false";
+        var docName = escapeForScript(state.recordingDocName);
 
-        var script = 'captureFrame("' + folder + '", ' + (state.frameCount + 1) + ', ' + q + ', ' + sf + ', ' + isFirst + ')';
+        var script = 'captureFrame("' + folder + '", ' + (state.frameCount + 1) + ', ' + q + ', ' + sf + ', ' + isFirst + ', "' + docName + '")';
 
         evalScript(script, function (result) {
             state.captureBusy = false;
@@ -511,7 +515,7 @@
                 if (result && result !== "undefined" && result !== "EvalScript error") {
                     var res = JSON.parse(result);
                     if (res.error) {
-                        if (res.error !== "NO_CHANGE") {
+                        if (res.error !== "NO_CHANGE" && res.error !== "WRONG_DOCUMENT") {
                             log("warning", "Capture error: " + res.message);
                         }
                     } else if (res.success) {
