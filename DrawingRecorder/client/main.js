@@ -30,7 +30,7 @@
         ffmpegPath: "",
         videoFormat: "mp4",
         frameHold: 0.5,
-        resScale: 1,
+        resScale: 2,
         deleteFrames: true,
         sessionName: "",
         sessionFolder: "",
@@ -46,7 +46,7 @@
         cropLeft: 0,
         cropRight: 0,
         cropBottom: 0,
-        smoothTransitions: false,
+        smoothTransitions: true,
         recordingDocName: ""
     };
 
