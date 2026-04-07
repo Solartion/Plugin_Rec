@@ -1,9 +1,9 @@
 @echo off
 setlocal EnableDelayedExpansion
-title Drawing Recorder - Installer
+title Timelapse Rec - Installer
 echo.
 echo  ============================================
-echo    Drawing Recorder - Full Installer
+echo    Timelapse Rec - Full Installer
 echo  ============================================
 echo.
 
@@ -16,7 +16,7 @@ echo         Done!
 echo.
 
 :: ---- Step 2: Download FFmpeg ----
-set "FFMPEG_DIR=%~dp0DrawingRecorder\tools"
+set "FFMPEG_DIR=%~dp0TimelapseRec\tools"
 set "FFMPEG_EXE=%FFMPEG_DIR%\ffmpeg.exe"
 
 if exist "%FFMPEG_EXE%" (
@@ -111,22 +111,22 @@ echo.
 
 :: ---- Step 3: Install extension ----
 set "EXT_DIR=%APPDATA%\Adobe\CEP\extensions"
-set "PLUGIN_DIR=%~dp0DrawingRecorder"
+set "PLUGIN_DIR=%~dp0TimelapseRec"
 
 echo  [3/4] Installing extension...
 
 if not exist "%EXT_DIR%" mkdir "%EXT_DIR%"
 
-if exist "%EXT_DIR%\DrawingRecorder" (
-    rmdir /s /q "%EXT_DIR%\DrawingRecorder" >nul 2>&1
-    rd "%EXT_DIR%\DrawingRecorder" >nul 2>&1
+if exist "%EXT_DIR%\TimelapseRec" (
+    rmdir /s /q "%EXT_DIR%\TimelapseRec" >nul 2>&1
+    rd "%EXT_DIR%\TimelapseRec" >nul 2>&1
 )
 
-mklink /J "%EXT_DIR%\DrawingRecorder" "%PLUGIN_DIR%" >nul 2>&1
+mklink /J "%EXT_DIR%\TimelapseRec" "%PLUGIN_DIR%" >nul 2>&1
 if %errorlevel% equ 0 (
     echo         Symlink created!
 ) else (
-    xcopy "%PLUGIN_DIR%" "%EXT_DIR%\DrawingRecorder\" /E /I /Y >nul
+    xcopy "%PLUGIN_DIR%" "%EXT_DIR%\TimelapseRec\" /E /I /Y >nul
     echo         Files copied!
 )
 
@@ -148,7 +148,7 @@ if exist "%FFMPEG_EXE%" (
     echo                    Place ffmpeg.exe into: %FFMPEG_DIR%
 )
 
-if exist "%EXT_DIR%\DrawingRecorder\CSXS\manifest.xml" (
+if exist "%EXT_DIR%\TimelapseRec\CSXS\manifest.xml" (
     echo         Extension: OK
 ) else (
     echo         Extension: ERROR
@@ -159,7 +159,7 @@ echo  ============================================
 echo    Installation complete!
 echo.
 echo    1. Restart Photoshop
-echo    2. Window ^> Extensions ^> Drawing Recorder
+echo    2. Window ^> Extensions ^> Timelapse Rec
 echo  ============================================
 echo.
 pause

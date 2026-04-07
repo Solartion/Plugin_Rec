@@ -1,4 +1,4 @@
-# Drawing Recorder — Photoshop Panel Extension
+# Timelapse Rec — Photoshop Panel Extension
 
 A timelapse and speedpaint recorder for Adobe Photoshop. It automatically saves frames of your drawing workflow in the background and compiles them into a video (MP4, MKV, MOV, AVI, WebM).
 
@@ -24,7 +24,7 @@ A timelapse and speedpaint recorder for Adobe Photoshop. It automatically saves 
    - Enable CEP `PlayerDebugMode` (required for launching unsigned extensions).
    - Download and install FFmpeg automatically.
    - Create a symlink for the extension in the Adobe CEP folder.
-4. Open Photoshop → **Window → Extensions → Drawing Recorder**.
+4. Open Photoshop → **Window → Extensions → Timelapse Rec**.
 
 ### Manual Installation
 
@@ -34,12 +34,12 @@ A timelapse and speedpaint recorder for Adobe Photoshop. It automatically saves 
    HKCU\Software\Adobe\CSXS.10 → PlayerDebugMode = 1
    HKCU\Software\Adobe\CSXS.11 → PlayerDebugMode = 1
    ```
-2. **FFmpeg**: Download FFmpeg from [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) (or any other source) and place `ffmpeg.exe` inside the `DrawingRecorder\tools\` folder.
-3. **Extension Directory**: Copy the `DrawingRecorder` folder to:
+2. **FFmpeg**: Download FFmpeg from [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) (or any other source) and place `ffmpeg.exe` inside the `TimelapseRec\tools\` folder.
+3. **Extension Directory**: Copy the `TimelapseRec` folder to:
    ```text
    %APPDATA%\Adobe\CEP\extensions\
    ```
-4. Restart Photoshop → **Window → Extensions → Drawing Recorder**.
+4. Restart Photoshop → **Window → Extensions → Timelapse Rec**.
 
 ---
 
@@ -48,7 +48,7 @@ A timelapse and speedpaint recorder for Adobe Photoshop. It automatically saves 
 ### Getting Started
 
 1. Open a document in Photoshop.
-2. In the Drawing Recorder panel, choose a **Save folder** (click "Select / Выбрать").
+2. In the Timelapse Rec panel, choose a **Save folder** (click "Select / Выбрать").
 3. Set the **Interval** between frames (default is 3 seconds).
 4. Click **● Record/Запись**.
 
@@ -90,6 +90,6 @@ A timelapse and speedpaint recorder for Adobe Photoshop. It automatically saves 
 - **Extension doesn't appear in the Window menu**
   → Ensure `install.bat` was run as Administrator to set the registry keys correctly. Restart Photoshop.
 - **"FFmpeg not found"**
-  → Make sure `ffmpeg.exe` is located in `DrawingRecorder\tools\`, or specify its path manually via the plugin settings panel.
+  → Make sure `ffmpeg.exe` is located in `TimelapseRec\tools\`, or specify its path manually via the plugin settings panel.
 - **No frames are being captured**
   → Ensure your document is open and you are actively making changes. The plugin only captures a frame when the document's history state changes.

@@ -1,14 +1,14 @@
 @echo off
 setlocal EnableDelayedExpansion
-title Drawing Recorder - Uninstaller
+title Timelapse Rec - Uninstaller
 echo.
 echo  ============================================
-echo    Drawing Recorder - Uninstaller
+echo    Timelapse Rec - Uninstaller
 echo  ============================================
 echo.
 
 set "EXT_DIR=%APPDATA%\Adobe\CEP\extensions"
-set "EXT_PATH=%EXT_DIR%\DrawingRecorder"
+set "EXT_PATH=%EXT_DIR%\TimelapseRec"
 
 :: ---- Check if extension is installed ----
 if not exist "%EXT_PATH%" (

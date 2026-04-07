@@ -40,7 +40,6 @@
         cropLeft: 0,
         cropRight: 0,
         cropBottom: 0,
-        smoothTransitions: true,
         recordingDocName: "",
         mouseDown: false,
         mouseWatcher: null
@@ -92,8 +91,7 @@
         cropTop: document.getElementById("cropTop"),
         cropLeft: document.getElementById("cropLeft"),
         cropRight: document.getElementById("cropRight"),
-        cropBottom: document.getElementById("cropBottom"),
-        chkSmoothTransitions: document.getElementById("chkSmoothTransitions")
+        cropBottom: document.getElementById("cropBottom")
     };
 
     function init() {
@@ -114,7 +112,7 @@
             stopMouseWatcher();
         });
 
-        log("info", "Drawing Recorder v2.0 loaded.");
+        log("info", "Timelapse Rec v2.0 loaded.");
     }
 
     function bindEvents() {
@@ -128,7 +126,6 @@
         el.frameHold.addEventListener("change", onFrameHoldChange);
         el.resScale.addEventListener("change", onResScaleChange);
         el.chkDeleteFrames.addEventListener("change", onDeleteFramesChange);
-        el.chkSmoothTransitions.addEventListener("change", onSmoothTransitionsChange);
 
         el.btnMinPause.addEventListener("click", onPauseClick);
         el.btnMinStop.addEventListener("click", onStopClick);
@@ -237,7 +234,7 @@
 
     function loadSettings() {
         try {
-            var saved = localStorage.getItem("drawingRecorderSettings_v2");
+            var saved = localStorage.getItem("timelapseRecSettings_v2");
             if (saved) {
                 var s = JSON.parse(saved);
                 if (s.interval) {
@@ -286,17 +283,13 @@
                     state.cropBottom = s.cropBottom;
                     el.cropBottom.value = s.cropBottom;
                 }
-                if (s.smoothTransitions !== undefined) {
-                    state.smoothTransitions = s.smoothTransitions;
-                    el.chkSmoothTransitions.checked = s.smoothTransitions;
-                }
             }
         } catch (e) { }
     }
 
     function saveSettings() {
         try {
-            localStorage.setItem("drawingRecorderSettings_v2", JSON.stringify({
+            localStorage.setItem("timelapseRecSettings_v2", JSON.stringify({
                 interval: state.intervalMs / 1000,
                 folder: state.outputFolder,
                 ffmpeg: state.ffmpegPath,
@@ -307,8 +300,7 @@
                 cropTop: state.cropTop,
                 cropLeft: state.cropLeft,
                 cropRight: state.cropRight,
-                cropBottom: state.cropBottom,
-                smoothTransitions: state.smoothTransitions
+                cropBottom: state.cropBottom
             }));
         } catch (e) { }
     }
@@ -405,7 +397,7 @@
 
                 updateUI("recording");
                 log("success", "Recording started: " + state.sessionName);
-                log("info", "Interval: " + (state.intervalMs / 1000) + "s | Format: " + state.videoFormat.toUpperCase() + " | Doc: " + docInfo.name + (state.smoothTransitions ? " | Smooth ON" : ""));
+                log("info", "Interval: " + (state.intervalMs / 1000) + "s | Format: " + state.videoFormat.toUpperCase() + " | Doc: " + docInfo.name + " | Smooth ON");
 
                 startMouseWatcher();
 
@@ -620,12 +612,8 @@
 
         vfFilters.push("crop=trunc(iw/2)*2:trunc(ih/2)*2");
 
-        if (state.smoothTransitions) {
-
-
-
-            vfFilters.push("framerate=fps=30:interp_start=0:interp_end=255:scene=100");
-        }
+        // Always apply smooth transitions (crossfade)
+        vfFilters.push("framerate=fps=30:interp_start=0:interp_end=255:scene=100");
 
         args.push("-vf", vfFilters.join(","));
 
@@ -771,11 +759,6 @@
         state.cropLeft = parseInt(el.cropLeft.value, 10) || 0;
         state.cropRight = parseInt(el.cropRight.value, 10) || 0;
         state.cropBottom = parseInt(el.cropBottom.value, 10) || 0;
-        saveSettings();
-    }
-
-    function onSmoothTransitionsChange() {
-        state.smoothTransitions = el.chkSmoothTransitions.checked;
         saveSettings();
     }
 

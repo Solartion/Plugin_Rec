@@ -1,4 +1,4 @@
-# Drawing Recorder — Плагин для Photoshop
+# Timelapse Rec — Плагин для Photoshop
 
 Таймлапс-рекордер для Photoshop. Автоматически сохраняет кадры вашего рабочего процесса и собирает их в видео (MP4, MKV, MOV, GIF, WebM).
 
@@ -14,7 +14,7 @@
    - Включит режим отладки CEP (нужен для неподписанных расширений)
    - Скачает и установит FFmpeg (≈100 МБ)
    - Создаст ссылку на расширение в папке Adobe CEP
-4. Откройте Photoshop → **Window → Extensions → Drawing Recorder**
+4. Откройте Photoshop → **Window → Extensions → Timelapse Rec**
 
 ### Ручная
 
@@ -25,14 +25,14 @@
    HKCU\Software\Adobe\CSXS.11 → PlayerDebugMode = 1
    ```
 
-2. **FFmpeg** — скачайте с [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) и поместите `ffmpeg.exe` в папку `DrawingRecorder\tools\`
+2. **FFmpeg** — скачайте с [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) и поместите `ffmpeg.exe` в папку `TimelapseRec\tools\`
 
-3. **Расширение** — скопируйте папку `DrawingRecorder` в:
+3. **Расширение** — скопируйте папку `TimelapseRec` в:
    ```
    %APPDATA%\Adobe\CEP\extensions\
    ```
 
-4. Перезапустите Photoshop → **Window → Extensions → Drawing Recorder**
+4. Перезапустите Photoshop → **Window → Extensions → Timelapse Rec**
 
 ---
 
@@ -41,7 +41,7 @@
 ### Начало записи
 
 1. Откройте документ в Photoshop
-2. В панели Drawing Recorder укажите **папку для сохранения** (кнопка «Обзор»)
+2. В панели Timelapse Rec укажите **папку для сохранения** (кнопка «Обзор»)
 3. Настройте **интервал** между кадрами (по умолчанию 5 секунд)
 4. Нажмите **● Запись**
 
@@ -85,7 +85,7 @@
 Plugin_Rec/
 ├── install.bat                    # Установщик
 ├── README.md                      # Этот файл
-└── DrawingRecorder/
+└── TimelapseRec/
     ├── CSXS/manifest.xml          # Манифест расширения CEP
     ├── client/
     │   ├── index.html             # Интерфейс панели
@@ -105,7 +105,7 @@ Plugin_Rec/
 → Убедитесь, что `install.bat` был запущен от имени администратора. Перезапустите Photoshop.
 
 **«FFmpeg not found»**
-→ Убедитесь, что файл `ffmpeg.exe` находится в папке `DrawingRecorder\tools\`. Или укажите путь вручную через кнопку «Указать».
+→ Убедитесь, что файл `ffmpeg.exe` находится в папке `TimelapseRec\tools\`. Или укажите путь вручную через кнопку «Указать».
 
 **Запись не создаёт кадры**
 → Убедитесь, что документ открыт и что вы вносите изменения на холст. Плагин сохраняет кадры только при изменении истории документа.
