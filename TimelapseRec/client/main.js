@@ -103,7 +103,8 @@
         cropTop: document.getElementById("cropTop"),
         cropLeft: document.getElementById("cropLeft"),
         cropRight: document.getElementById("cropRight"),
-        cropBottom: document.getElementById("cropBottom")
+        cropBottom: document.getElementById("cropBottom"),
+        userLanguage: document.getElementById("userLanguage")
     };
 
     function init() {
@@ -139,6 +140,11 @@
         el.btnSelectFolder.addEventListener("click", onSelectFolder);
         el.btnSelectFFmpeg.addEventListener("click", onSelectFFmpeg);
         el.btnUpdate.addEventListener("click", onUpdateClick);
+        el.userLanguage.addEventListener("change", function() {
+            i18n.setLang(el.userLanguage.value);
+            saveSettings();
+            updateUI(state.recording ? "recording" : (state.paused ? "paused" : "idle"));
+        });
         el.intervalSlider.addEventListener("input", onIntervalChange);
         el.videoFormat.addEventListener("change", onFormatChange);
         el.frameHold.addEventListener("change", onFrameHoldChange);
@@ -788,11 +794,11 @@
                 csInterface.resizeContent(220, 60);
 
                 el.statusBadge.className = "status-badge status-recording";
-                el.statusText.textContent = "Recording...";
+                el.statusText.textContent = i18n.t("status_recording");
                 el.btnRecord.disabled = true;
                 el.btnRecord.classList.add("recording");
                 el.btnPause.disabled = false;
-                el.btnPause.querySelector("span").textContent = "Pause";
+                el.btnPause.querySelector("span").textContent = i18n.t("btn_pause");
                 el.btnStop.disabled = false;
                 el.btnSelectFolder.disabled = true;
                 el.btnSelectFFmpeg.disabled = true;
@@ -805,8 +811,8 @@
                 break;
             case "paused":
                 el.statusBadge.className = "status-badge status-paused";
-                el.statusText.textContent = "Paused";
-                el.btnPause.querySelector("span").textContent = "Resume";
+                el.statusText.textContent = i18n.t("status_paused");
+                el.btnPause.querySelector("span").textContent = i18n.t("btn_resume");
                 el.minDot.className = "min-dot paused";
                 break;
             case "idle":
@@ -815,11 +821,11 @@
                 csInterface.resizeContent(320, 500);
 
                 el.statusBadge.className = "status-badge status-idle";
-                el.statusText.textContent = "Stopped";
+                el.statusText.textContent = i18n.t("status_stopped");
                 el.btnRecord.disabled = false;
                 el.btnRecord.classList.remove("recording");
                 el.btnPause.disabled = true;
-                el.btnPause.querySelector("span").textContent = "Pause";
+                el.btnPause.querySelector("span").textContent = i18n.t("btn_pause");
                 el.btnStop.disabled = true;
                 el.btnSelectFolder.disabled = false;
                 el.btnSelectFFmpeg.disabled = false;
@@ -989,9 +995,9 @@
 
     function showUpdateBanner(sha) {
         el.updateBanner.classList.remove("hidden");
-        el.updateMessage.textContent = "\u0414\u043e\u0441\u0442\u0443\u043f\u043d\u043e \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435 (" + sha.substring(0, 8) + ")";
+        el.updateMessage.textContent = i18n.t("update_available") + " (" + sha.substring(0, 8) + ")";
         el.btnUpdate.disabled = false;
-        el.btnUpdate.textContent = "\u041e\u0431\u043d\u043e\u0432\u0438\u0442\u044c";
+        el.btnUpdate.textContent = i18n.t("btn_update");
     }
 
     function onUpdateClick() {
@@ -1009,11 +1015,11 @@
 
         state.updating = true;
         el.btnUpdate.disabled = true;
-        el.btnUpdate.textContent = "\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430...";
+        el.btnUpdate.textContent = i18n.t("upd_loading");
         el.updateBanner.className = "update-banner updating";
         el.updateProgress.classList.remove("hidden");
         el.updateProgressFill.style.width = "10%";
-        el.updateMessage.textContent = "\u0421\u043a\u0430\u0447\u0438\u0432\u0430\u043d\u0438\u0435 \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u044f...";
+        el.updateMessage.textContent = i18n.t("upd_downloading");
         log("info", "Downloading update...");
 
         var timestamp = Date.now();
@@ -1030,8 +1036,8 @@
             }
 
             el.updateProgressFill.style.width = "40%";
-            el.updateMessage.textContent = "\u0420\u0430\u0441\u043f\u0430\u043a\u043e\u0432\u043a\u0430...";
-            el.btnUpdate.textContent = "\u0423\u0441\u0442\u0430\u043d\u043e\u0432\u043a\u0430...";
+            el.updateMessage.textContent = i18n.t("upd_extracting");
+            el.btnUpdate.textContent = i18n.t("upd_installing");
             log("info", "Download complete. Extracting...");
 
             // Extract using PowerShell Expand-Archive
@@ -1047,7 +1053,7 @@
                 }
 
                 el.updateProgressFill.style.width = "60%";
-                el.updateMessage.textContent = "\u041a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435 \u0444\u0430\u0439\u043b\u043e\u0432...";
+                el.updateMessage.textContent = i18n.t("upd_copying");
                 log("info", "Extraction complete. Copying files...");
 
                 // Find the extracted root folder (GitHub wraps in Owner-Repo-SHA/)
@@ -1087,8 +1093,8 @@
 
                     el.updateProgressFill.style.width = "100%";
                     el.updateBanner.className = "update-banner update-done";
-                    el.updateMessage.textContent = "\u041e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435 \u0443\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u043e! \u041f\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 Photoshop.";
-                    el.btnUpdate.textContent = "\u0413\u043e\u0442\u043e\u0432\u043e \u2713";
+                    el.updateMessage.textContent = i18n.t("upd_success");
+                    el.btnUpdate.textContent = i18n.t("btn_done");
                     el.btnUpdate.disabled = true;
                     state.updating = false;
                     log("success", "Update installed successfully! Restart Photoshop to apply.");
@@ -1187,8 +1193,8 @@
     function onUpdateError(msg) {
         state.updating = false;
         el.updateBanner.className = "update-banner update-error";
-        el.updateMessage.textContent = "\u041e\u0448\u0438\u0431\u043a\u0430 \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u044f";
-        el.btnUpdate.textContent = "\u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u044c";
+        el.updateMessage.textContent = i18n.t("upd_err");
+        el.btnUpdate.textContent = i18n.t("btn_retry");
         el.btnUpdate.disabled = false;
         log("error", "Update error: " + msg);
     }

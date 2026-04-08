@@ -23,7 +23,7 @@
                 </div>
                 <div id="statusBadge" class="status-badge status-idle">
                     <span class="status-dot"></span>
-                    <span id="statusText">Остановлено</span>
+                    <span id="statusText" data-i18n="status_stopped">Остановлено</span>
                 </div>
             </div>
 
@@ -34,9 +34,9 @@
                         <path d="M21,10.12H14.22L16.96,7.38L14.59,5L8,11.59L14.59,18.17L16.96,15.83L14.22,13.09H21V10.12M3,5V19H5V5H3Z" fill="currentColor"/>
                     </svg>
                     <div class="update-text">
-                        <span id="updateMessage">Доступно обновление</span>
+                        <span id="updateMessage" data-i18n="update_available">Доступно обновление</span>
                     </div>
-                    <button id="btnUpdate" class="btn btn-update-action">Обновить</button>
+                    <button id="btnUpdate" class="btn btn-update-action" data-i18n="btn_update">Обновить</button>
                 </div>
                 <div id="updateProgress" class="update-progress hidden">
                     <div id="updateProgressFill" class="update-progress-fill"></div>
@@ -51,7 +51,7 @@
                             d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"
                             fill="currentColor" opacity="0.3" />
                     </svg>
-                    <span>Откройте документ для начала</span>
+                    <span data-i18n="doc_placeholder">Откройте документ для начала</span>
                 </div>
                 <div class="doc-info-content" style="display:none">
                     <span id="docName" class="doc-name"></span>
@@ -61,39 +61,39 @@
 
             <!-- Controls -->
             <div class="controls">
-                <button id="btnRecord" class="btn btn-record" title="Начать запись">
+                <button id="btnRecord" class="btn btn-record" title="Record">
                     <svg viewBox="0 0 24 24" width="18" height="18">
                         <circle cx="12" cy="12" r="8" fill="currentColor" />
                     </svg>
-                    <span>Запись</span>
+                    <span data-i18n="btn_record">Запись</span>
                 </button>
-                <button id="btnPause" class="btn btn-pause" disabled title="Пауза">
+                <button id="btnPause" class="btn btn-pause" disabled title="Pause">
                     <svg viewBox="0 0 24 24" width="18" height="18">
                         <rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" />
                         <rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" />
                     </svg>
-                    <span>Пауза</span>
+                    <span data-i18n="btn_pause">Пауза</span>
                 </button>
-                <button id="btnStop" class="btn btn-stop" disabled title="Стоп">
+                <button id="btnStop" class="btn btn-stop" disabled title="Stop">
                     <svg viewBox="0 0 24 24" width="18" height="18">
                         <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />
                     </svg>
-                    <span>Стоп</span>
+                    <span data-i18n="btn_stop">Стоп</span>
                 </button>
             </div>
 
             <!-- Stats -->
             <div id="stats" class="stats">
                 <div class="stat-item">
-                    <span class="stat-label">Кадров</span>
+                    <span class="stat-label" data-i18n="stat_frames">Кадров</span>
                     <span id="frameCount" class="stat-value">0</span>
                 </div>
                 <div class="stat-item">
-                    <span class="stat-label">Время записи</span>
+                    <span class="stat-label" data-i18n="stat_time">Время записи</span>
                     <span id="elapsedTime" class="stat-value">00:00</span>
                 </div>
                 <div class="stat-item">
-                    <span class="stat-label">Размер</span>
+                    <span class="stat-label" data-i18n="stat_size">Размер</span>
                     <span id="totalSize" class="stat-value">0 MB</span>
                 </div>
             </div>
@@ -107,7 +107,7 @@
             <div id="encodingSection" class="encoding-section" style="display:none">
                 <div class="encoding-header">
                     <span class="encoding-spinner"></span>
-                    <span id="encodingStatus">Кодирование видео...</span>
+                    <span id="encodingStatus" data-i18n="encoding_video">Кодирование видео...</span>
                 </div>
                 <div class="encoding-bar">
                     <div id="encodingFill" class="encoding-fill"></div>
@@ -116,15 +116,24 @@
 
             <!-- Settings -->
             <div class="settings">
-                <h2>Настройки</h2>
+                <h2 data-i18n="settings_title">Настройки</h2>
 
                 <div class="setting-row">
-                    <label for="intervalSlider">Интервал: <strong id="intervalValue">3</strong> сек</label>
+                    <label data-i18n="language_label">Язык:</label>
+                    <select id="userLanguage" class="select-input">
+                        <option value="ru">Русский</option>
+                        <option value="en">English</option>
+                        <option value="zh">中文</option>
+                    </select>
+                </div>
+
+                <div class="setting-row">
+                    <label for="intervalSlider"><span data-i18n="interval_label">Интервал:</span> <strong id="intervalValue">3</strong> <span data-i18n="sec">сек</span></label>
                     <input type="range" id="intervalSlider" min="1" max="30" value="3" step="1">
                 </div>
 
                 <div class="setting-row">
-                    <label for="videoFormat">Формат видео:</label>
+                    <label for="videoFormat" data-i18n="video_format">Формат видео:</label>
                     <select id="videoFormat" class="select-input">
                         <option value="mp4">MP4 (H.264)</option>
                         <option value="mkv">MKV (H.264)</option>
@@ -135,59 +144,58 @@
                 </div>
 
                 <div class="setting-row">
-                    <label for="frameHold">Длительность кадра:</label>
+                    <label for="frameHold" data-i18n="frame_hold">Длительность кадра:</label>
                     <select id="frameHold" class="select-input">
-                        <option value="0.1">0.1 сек (очень быстро)</option>
-                        <option value="0.25">0.25 сек (быстро)</option>
-                        <option value="0.5" selected>0.5 сек (нормально)</option>
-                        <option value="1">1 сек (медленно)</option>
-                        <option value="1.5">1.5 сек</option>
-                        <option value="2">2 сек (очень медленно)</option>
-                        <option value="3">3 сек</option>
+                        <option value="0.1" data-i18n="fh_01">0.1 - очень быстро</option>
+                        <option value="0.25" data-i18n="fh_025">0.25 - быстро</option>
+                        <option value="0.5" selected data-i18n="fh_05">0.5 - нормально</option>
+                        <option value="1" data-i18n="fh_10">1.0 - медленно</option>
+                        <option value="1.5" data-i18n="fh_15">1.5</option>
+                        <option value="2" data-i18n="fh_20">2.0 - очень медленно</option>
+                        <option value="3" data-i18n="fh_30">3.0</option>
                     </select>
                 </div>
 
                 <div class="setting-row">
-                    <label for="resScale">Размер кадра:</label>
+                    <label for="resScale" data-i18n="res_scale">Размер кадра:</label>
                     <select id="resScale" class="select-input">
-                        <option value="1">100% (Оригинал)</option>
-                        <option value="2" selected>50% (1/2 размера)</option>
-                        <option value="4">25% (1/4 размера)</option>
+                        <option value="1" data-i18n="rs_orig">100% (Оригинал)</option>
+                        <option value="2" selected data-i18n="rs_half">50% (1/2 размера)</option>
+                        <option value="4" data-i18n="rs_quarter">25% (1/4 размера)</option>
                     </select>
                 </div>
 
 
                 <div class="setting-row">
-                    <label>Папка сохранения:</label>
+                    <label data-i18n="folder_label">Папка сохранения:</label>
                     <div class="folder-row">
-                        <span id="folderPath" class="folder-path" title="">Не выбрана</span>
-                        <button id="btnSelectFolder" class="btn btn-small">Выбрать</button>
+                        <span id="folderPath" class="folder-path" title="" data-i18n="not_selected">Не выбрана</span>
+                        <button id="btnSelectFolder" class="btn btn-small" data-i18n="btn_select">Выбрать</button>
                     </div>
                 </div>
 
                 <div class="setting-row">
-                    <label>FFmpeg:</label>
+                    <label data-i18n="ffmpeg_label">FFmpeg:</label>
                     <div class="folder-row">
-                        <span id="ffmpegPath" class="folder-path" title="">Не найден</span>
-                        <button id="btnSelectFFmpeg" class="btn btn-small">Указать</button>
+                        <span id="ffmpegPath" class="folder-path" title="" data-i18n="not_found">Не найден</span>
+                        <button id="btnSelectFFmpeg" class="btn btn-small" data-i18n="btn_specify">Указать</button>
                     </div>
                 </div>
 
                 <div class="setting-row checkbox-row">
                     <label>
                         <input type="checkbox" id="chkDeleteFrames" checked>
-                        Удалить кадры после кодирования
+                        <span data-i18n="delete_frames">Удалить кадры после кодирования</span>
                     </label>
                 </div>
-
 
             </div>
 
             <!-- Log -->
             <div class="log-section">
-                <h2>Журнал</h2>
+                <h2 data-i18n="log_title">Журнал</h2>
                 <div id="logContainer" class="log-container">
-                    <div class="log-entry log-info">Плагин загружен. Укажите FFmpeg, папку и начните запись.</div>
+                    <div class="log-entry log-info" id="initialLog" data-i18n="log_loaded">Плагин загружен. Укажите FFmpeg, папку и начните запись.</div>
                 </div>
             </div>
         </div>
@@ -199,13 +207,13 @@
                 <span id="minTime" class="min-time">00:00:00</span>
             </div>
             <div class="min-controls">
-                <button id="btnMinPause" class="btn btn-small" title="Пауза">
+                <button id="btnMinPause" class="btn btn-small" title="Pause">
                     <svg viewBox="0 0 24 24" width="14" height="14">
                         <rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" />
                         <rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" />
                     </svg>
                 </button>
-                <button id="btnMinStop" class="btn btn-small btn-stop-min" title="Стоп">
+                <button id="btnMinStop" class="btn btn-small btn-stop-min" title="Stop">
                     <svg viewBox="0 0 24 24" width="14" height="14">
                         <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />
                     </svg>
@@ -215,6 +223,7 @@
     </div>
 
     <script src="libs/CSInterface.js"></script>
+    <script src="i18n.js"></script>
     <script src="main.js"></script>
 </body>
 
