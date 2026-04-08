@@ -4,15 +4,19 @@
     "use strict";
 
     var csInterface = new CSInterface();
-    var path, fs, childProcess, nodeTimers;
+    var path, fs, childProcess, nodeTimers, https;
     try {
         path = require("path");
         fs = require("fs");
         childProcess = require("child_process");
         nodeTimers = require("timers");
+        https = require("https");
     } catch (e) {
 
     }
+
+    var REPO_OWNER = "Solartion";
+    var REPO_NAME = "Plugin_Rec";
 
     var state = {
         recording: false,
@@ -42,7 +46,9 @@
         cropBottom: 0,
         recordingDocName: "",
         mouseDown: false,
-        mouseWatcher: null
+        mouseWatcher: null,
+        updating: false,
+        pendingUpdateSha: ""
     };
 
     var CODECS = {
@@ -76,11 +82,17 @@
         btnSelectFolder: document.getElementById("btnSelectFolder"),
         ffmpegPath: document.getElementById("ffmpegPath"),
         btnSelectFFmpeg: document.getElementById("btnSelectFFmpeg"),
+        btnUpdate: document.getElementById("btnUpdate"),
         chkDeleteFrames: document.getElementById("chkDeleteFrames"),
         logContainer: document.getElementById("logContainer"),
         encodingSection: document.getElementById("encodingSection"),
         encodingStatus: document.getElementById("encodingStatus"),
         encodingFill: document.getElementById("encodingFill"),
+
+        updateBanner: document.getElementById("updateBanner"),
+        updateMessage: document.getElementById("updateMessage"),
+        updateProgress: document.getElementById("updateProgress"),
+        updateProgressFill: document.getElementById("updateProgressFill"),
 
         mainUI: document.getElementById("mainUI"),
         minimalUI: document.getElementById("minimalUI"),
@@ -106,6 +118,11 @@
             setTimeout(detectFFmpeg, 2000);
         }
 
+        // Auto-update check after 5 seconds
+        if (https && fs) {
+            setTimeout(checkForUpdates, 5000);
+        }
+
         window.addEventListener("beforeunload", function () {
             var clrInt = nodeTimers ? nodeTimers.clearInterval : clearInterval;
             if (state.captureTimer) clrInt(state.captureTimer);
@@ -121,6 +138,7 @@
         el.btnStop.addEventListener("click", onStopClick);
         el.btnSelectFolder.addEventListener("click", onSelectFolder);
         el.btnSelectFFmpeg.addEventListener("click", onSelectFFmpeg);
+        el.btnUpdate.addEventListener("click", onUpdateClick);
         el.intervalSlider.addEventListener("input", onIntervalChange);
         el.videoFormat.addEventListener("change", onFormatChange);
         el.frameHold.addEventListener("change", onFrameHoldChange);
@@ -878,6 +896,308 @@
 
     function pad2(n) {
         return n < 10 ? "0" + n : "" + n;
+    }
+
+    // ========== AUTO-UPDATE SYSTEM ==========
+
+    function getPluginRootDir() {
+        // Plugin structure: Plugin_Rec/TimelapseRec/client/main.js
+        // We need to get to Plugin_Rec/
+        try {
+            var clientDir = __dirname || "";
+            if (clientDir) {
+                return path.resolve(clientDir, "..", "..");
+            }
+        } catch (e) { }
+
+        try {
+            var extPath = csInterface.getSystemPath("extension");
+            if (extPath) {
+                var normalized = extPath.replace(/^\/([a-zA-Z])\//, "$1:/").replace(/\//g, "\\");
+                return path.resolve(normalized, "..");
+            }
+        } catch (e) { }
+
+        return null;
+    }
+
+    function checkForUpdates() {
+        var pluginRoot = getPluginRootDir();
+        if (!pluginRoot) {
+            log("warning", "Auto-update: cannot determine plugin root dir");
+            return;
+        }
+
+        var versionPath = path.join(pluginRoot, "version.txt");
+        var localVersion = "";
+        try {
+            if (fs.existsSync(versionPath)) {
+                localVersion = fs.readFileSync(versionPath, "utf8").trim();
+            }
+        } catch (e) {
+            log("warning", "Auto-update: cannot read version.txt");
+            return;
+        }
+
+        log("info", "Checking for updates...");
+
+        var options = {
+            hostname: "api.github.com",
+            path: "/repos/" + REPO_OWNER + "/" + REPO_NAME + "/commits/main",
+            headers: { "User-Agent": "TimelapseRec-Plugin" },
+            timeout: 10000
+        };
+
+        var req = https.get(options, function (res) {
+            var data = "";
+            res.on("data", function (chunk) { data += chunk; });
+            res.on("end", function () {
+                try {
+                    if (res.statusCode !== 200) {
+                        log("warning", "Update check: GitHub API returned " + res.statusCode);
+                        return;
+                    }
+                    var json = JSON.parse(data);
+                    var remoteSha = json.sha;
+                    if (!remoteSha) {
+                        log("warning", "Update check: no SHA in response");
+                        return;
+                    }
+
+                    if (remoteSha !== localVersion) {
+                        state.pendingUpdateSha = remoteSha;
+                        showUpdateBanner(remoteSha);
+                        log("info", "Update available: " + remoteSha.substring(0, 8));
+                    } else {
+                        log("info", "Plugin is up to date.");
+                    }
+                } catch (e) {
+                    log("warning", "Update check parse error: " + e.message);
+                }
+            });
+        });
+
+        req.on("error", function (err) {
+            log("warning", "Update check failed: " + err.message);
+        });
+
+        req.on("timeout", function () {
+            req.abort();
+            log("warning", "Update check timed out");
+        });
+    }
+
+    function showUpdateBanner(sha) {
+        el.updateBanner.classList.remove("hidden");
+        el.updateMessage.textContent = "\u0414\u043e\u0441\u0442\u0443\u043f\u043d\u043e \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435 (" + sha.substring(0, 8) + ")";
+        el.btnUpdate.disabled = false;
+        el.btnUpdate.textContent = "\u041e\u0431\u043d\u043e\u0432\u0438\u0442\u044c";
+    }
+
+    function onUpdateClick() {
+        if (state.updating) return;
+        if (state.recording) {
+            log("warning", "Cannot update while recording");
+            return;
+        }
+
+        var pluginRoot = getPluginRootDir();
+        if (!pluginRoot) {
+            log("error", "Update: cannot determine plugin root dir");
+            return;
+        }
+
+        state.updating = true;
+        el.btnUpdate.disabled = true;
+        el.btnUpdate.textContent = "\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430...";
+        el.updateBanner.className = "update-banner updating";
+        el.updateProgress.classList.remove("hidden");
+        el.updateProgressFill.style.width = "10%";
+        el.updateMessage.textContent = "\u0421\u043a\u0430\u0447\u0438\u0432\u0430\u043d\u0438\u0435 \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u044f...";
+        log("info", "Downloading update...");
+
+        var timestamp = Date.now();
+        var tempDir = process.env.TEMP || process.env.TMP || "C:\\Temp";
+        var tempZip = path.join(tempDir, "plugin_update_" + timestamp + ".zip");
+        var tempExtract = path.join(tempDir, "plugin_update_" + timestamp);
+
+        // Download the zip from GitHub API (follows redirects)
+        var zipUrl = "/repos/" + REPO_OWNER + "/" + REPO_NAME + "/zipball/main";
+        downloadFile("api.github.com", zipUrl, tempZip, function (err) {
+            if (err) {
+                onUpdateError("Download failed: " + err);
+                return;
+            }
+
+            el.updateProgressFill.style.width = "40%";
+            el.updateMessage.textContent = "\u0420\u0430\u0441\u043f\u0430\u043a\u043e\u0432\u043a\u0430...";
+            el.btnUpdate.textContent = "\u0423\u0441\u0442\u0430\u043d\u043e\u0432\u043a\u0430...";
+            log("info", "Download complete. Extracting...");
+
+            // Extract using PowerShell Expand-Archive
+            var psCmd = "Expand-Archive -Path '" + tempZip.replace(/'/g, "''") + "' -DestinationPath '" + tempExtract.replace(/'/g, "''") + "' -Force";
+            childProcess.exec("powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"" + psCmd + "\"", {
+                timeout: 60000,
+                windowsHide: true
+            }, function (err2) {
+                if (err2) {
+                    onUpdateError("Extraction failed: " + err2.message);
+                    cleanupTemp(tempZip, tempExtract);
+                    return;
+                }
+
+                el.updateProgressFill.style.width = "60%";
+                el.updateMessage.textContent = "\u041a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435 \u0444\u0430\u0439\u043b\u043e\u0432...";
+                log("info", "Extraction complete. Copying files...");
+
+                // Find the extracted root folder (GitHub wraps in Owner-Repo-SHA/)
+                try {
+                    var extractedItems = fs.readdirSync(tempExtract);
+                    var extractedRoot = "";
+                    for (var i = 0; i < extractedItems.length; i++) {
+                        var itemPath = path.join(tempExtract, extractedItems[i]);
+                        if (fs.statSync(itemPath).isDirectory()) {
+                            extractedRoot = itemPath;
+                            break;
+                        }
+                    }
+
+                    if (!extractedRoot) {
+                        onUpdateError("No folder found in extracted archive");
+                        cleanupTemp(tempZip, tempExtract);
+                        return;
+                    }
+
+                    el.updateProgressFill.style.width = "70%";
+
+                    // Files/dirs to never overwrite
+                    var EXCLUDE = ["version.txt", ".git", "backups", "update.log", "update_available.txt"];
+                    var EXCLUDE_FILES = ["ffmpeg.exe", "ffprobe.exe"];
+
+                    copyDirRecursive(extractedRoot, pluginRoot, EXCLUDE, EXCLUDE_FILES);
+
+                    el.updateProgressFill.style.width = "90%";
+
+                    // Update version.txt with new SHA
+                    if (state.pendingUpdateSha) {
+                        var versionPath = path.join(pluginRoot, "version.txt");
+                        fs.writeFileSync(versionPath, state.pendingUpdateSha, "utf8");
+                        log("info", "version.txt updated to " + state.pendingUpdateSha.substring(0, 8));
+                    }
+
+                    el.updateProgressFill.style.width = "100%";
+                    el.updateBanner.className = "update-banner update-done";
+                    el.updateMessage.textContent = "\u041e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435 \u0443\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u043e! \u041f\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 Photoshop.";
+                    el.btnUpdate.textContent = "\u0413\u043e\u0442\u043e\u0432\u043e \u2713";
+                    el.btnUpdate.disabled = true;
+                    state.updating = false;
+                    log("success", "Update installed successfully! Restart Photoshop to apply.");
+
+                } catch (copyErr) {
+                    onUpdateError("Copy failed: " + copyErr.message);
+                }
+
+                cleanupTemp(tempZip, tempExtract);
+            });
+        });
+    }
+
+    function downloadFile(hostname, urlPath, destPath, callback) {
+        var options = {
+            hostname: hostname,
+            path: urlPath,
+            headers: { "User-Agent": "TimelapseRec-Plugin" },
+            timeout: 60000
+        };
+
+        https.get(options, function (res) {
+            // Follow redirects (GitHub API returns 302)
+            if (res.statusCode === 301 || res.statusCode === 302) {
+                var redirectUrl = res.headers.location;
+                if (!redirectUrl) {
+                    callback("Redirect with no location header");
+                    return;
+                }
+                var urlModule = require("url");
+                var parsed = urlModule.parse(redirectUrl);
+                downloadFile(parsed.hostname, parsed.path, destPath, callback);
+                return;
+            }
+
+            if (res.statusCode !== 200) {
+                callback("HTTP " + res.statusCode);
+                return;
+            }
+
+            var fileStream = fs.createWriteStream(destPath);
+            res.pipe(fileStream);
+            fileStream.on("finish", function () {
+                fileStream.close();
+                callback(null);
+            });
+            fileStream.on("error", function (err) {
+                try { fs.unlinkSync(destPath); } catch (e) { }
+                callback(err.message);
+            });
+        }).on("error", function (err) {
+            callback(err.message);
+        });
+    }
+
+    function copyDirRecursive(src, dest, excludeDirs, excludeFiles) {
+        var items = fs.readdirSync(src);
+        for (var i = 0; i < items.length; i++) {
+            var itemName = items[i];
+
+            // Check top-level dir exclusions
+            var skip = false;
+            for (var e = 0; e < excludeDirs.length; e++) {
+                if (itemName === excludeDirs[e]) { skip = true; break; }
+            }
+            if (skip) continue;
+
+            var srcPath = path.join(src, itemName);
+            var destPath = path.join(dest, itemName);
+            var stat = fs.statSync(srcPath);
+
+            if (stat.isDirectory()) {
+                if (!fs.existsSync(destPath)) {
+                    fs.mkdirSync(destPath, { recursive: true });
+                }
+                // Only exclude dirs at top level
+                copyDirRecursive(srcPath, destPath, [], excludeFiles);
+            } else {
+                // Check file exclusions
+                var skipFile = false;
+                for (var f = 0; f < excludeFiles.length; f++) {
+                    if (itemName === excludeFiles[f]) { skipFile = true; break; }
+                }
+                if (skipFile) continue;
+
+                try {
+                    var fileData = fs.readFileSync(srcPath);
+                    fs.writeFileSync(destPath, fileData);
+                } catch (writeErr) {
+                    log("warning", "Could not update: " + itemName + " (" + writeErr.message + ")");
+                }
+            }
+        }
+    }
+
+    function onUpdateError(msg) {
+        state.updating = false;
+        el.updateBanner.className = "update-banner update-error";
+        el.updateMessage.textContent = "\u041e\u0448\u0438\u0431\u043a\u0430 \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u044f";
+        el.btnUpdate.textContent = "\u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u044c";
+        el.btnUpdate.disabled = false;
+        log("error", "Update error: " + msg);
+    }
+
+    function cleanupTemp(zipPath, extractPath) {
+        try { fs.unlinkSync(zipPath); } catch (e) { }
+        try {
+            childProcess.exec('rmdir /s /q "' + extractPath + '"', { windowsHide: true }, function () { });
+        } catch (e) { }
     }
 
     init();

@@ -1,4 +1,5 @@
 @echo off
+powershell -ExecutionPolicy Bypass -File "%~dp0update.ps1"
 setlocal EnableDelayedExpansion
 title Timelapse Rec - Installer
 echo.

@@ -154,6 +154,7 @@ function checkFolder(folderPath) {
 }
 
 function selectFFmpeg() {
+    // Existing code unchanged
     try {
         var f = File.openDialog("Select ffmpeg executable", "ffmpeg*");
         if (f !== null && f !== undefined) {
