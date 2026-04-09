@@ -1,0 +1,40 @@
+[2026-04-09 14:51:43] --- Update check started ---
+[2026-04-09 14:51:43] Local version: v1.0
+
+[2026-04-09 14:51:43] Remote SHA: d05f378d094c34d0a394a562584485adb13b01df
+[2026-04-09 14:51:56] --- Update check started ---
+[2026-04-09 14:51:56] Local version: v1.0
+
+[2026-04-09 14:51:56] Remote SHA: d05f378d094c34d0a394a562584485adb13b01df
+[2026-04-09 14:52:11] --- Update check started ---
+[2026-04-09 14:52:11] Local version: v1.0
+
+[2026-04-09 14:52:12] Remote SHA: d05f378d094c34d0a394a562584485adb13b01df
+[2026-04-09 14:53:54] --- Update check started ---
+[2026-04-09 14:53:55] Local version: v1.0
+
+[2026-04-09 14:53:55] Remote SHA: d05f378d094c34d0a394a562584485adb13b01df
+[2026-04-09 14:54:10] Created backup at E:\MyPlugin\Rec_Plugin\Plugin_Rec\backups\backup_20260409_145355.zip
+[2026-04-09 14:57:22] --- Update check started ---
+[2026-04-09 14:57:22] Local version: v1.0
+
+[2026-04-09 14:57:22] Remote SHA: d05f378d094c34d0a394a562584485adb13b01df
+[2026-04-09 14:57:39] Created backup at E:\MyPlugin\Rec_Plugin\Plugin_Rec\backups\backup_20260409_145722.zip
+[2026-04-09 14:59:28] Failed to download zip: Ќе удаетс€ прочитать данные из транспортного соединени€: ”даленный хост принудительно разорвал существующее подключение.
+[2026-04-09 14:59:41] --- Update check started ---
+[2026-04-09 14:59:41] Local version: v1.0
+
+[2026-04-09 14:59:42] Remote SHA: d05f378d094c34d0a394a562584485adb13b01df
+[2026-04-09 15:00:05] Created backup at E:\MyPlugin\Rec_Plugin\Plugin_Rec\backups\backup_20260409_145942.zip
+[2026-04-09 15:03:43] --- Update check started ---
+[2026-04-09 15:03:43] Local version: v1.0
+
+[2026-04-09 15:03:44] Remote SHA: d05f378d094c34d0a394a562584485adb13b01df
+[2026-04-09 15:04:20] Created backup at E:\MyPlugin\Rec_Plugin\Plugin_Rec\backups\backup_20260409_150344.zip
+[2026-04-09 15:04:20] Downloading update from GitHub...
+[2026-04-09 15:04:43] Downloaded zip to C:\Users\jazza\AppData\Local\Temp\plugin_update_20260409_150344.zip
+[2026-04-09 15:04:45] Extracted zip to C:\Users\jazza\AppData\Local\Temp\plugin_update_20260409_150344
+[2026-04-09 15:04:45] Copied new files to plugin directory
+[2026-04-09 15:04:45] Updated version.txt to d05f378d094c34d0a394a562584485adb13b01df
+[2026-04-09 15:04:45] Created update_available.txt flag
+[2026-04-09 15:04:45] --- Update completed successfully ---
