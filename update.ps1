@@ -10,7 +10,9 @@ param(
 function Write-Log {
     param([string]$msg)
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    Add-Content -Path (Join-Path $PluginDir $LogFile) -Value "[$timestamp] $msg"
+    $logMsg = "[$timestamp] $msg"
+    Add-Content -Path (Join-Path $PluginDir $LogFile) -Value $logMsg
+    Write-Host $logMsg -ForegroundColor Cyan
 }
 
 Write-Log "--- Update check started ---"

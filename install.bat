@@ -1,14 +1,11 @@
 @echo off
+title Timelapse Rec - Installer
+echo  ============================================
+echo    Checking for updates...
+echo  ============================================
 powershell -ExecutionPolicy Bypass -File "%~dp0update.ps1"
 setlocal EnableDelayedExpansion
-title Timelapse Rec - Installer
 echo.
-echo  ============================================
-echo    Timelapse Rec - Full Installer
-echo  ============================================
-echo.
-
-:: ---- Step 1: Debug mode registry ----
 echo  [1/4] Setting CEP debug mode in registry...
 reg add "HKCU\Software\Adobe\CSXS.9" /v PlayerDebugMode /t REG_SZ /d 1 /f >nul 2>&1
 reg add "HKCU\Software\Adobe\CSXS.10" /v PlayerDebugMode /t REG_SZ /d 1 /f >nul 2>&1
