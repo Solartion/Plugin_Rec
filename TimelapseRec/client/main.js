@@ -40,6 +40,8 @@
         captureTimer: null,
         captureBusy: false,
         captureLastTime: 0,
+        maxFrameWidth: 0,
+        maxFrameHeight: 0,
         cropTop: 0,
         cropLeft: 0,
         cropRight: 0,
@@ -414,6 +416,8 @@
                 state.recording = true;
                 state.paused = false;
                 state.frameCount = 0;
+                state.maxFrameWidth = docInfo.width || 0;
+                state.maxFrameHeight = docInfo.height || 0;
                 state.startTime = Date.now();
                 state.pausedTime = 0;
                 state.sessionFolder = res.path;
@@ -566,6 +570,8 @@
                         }
                     } else if (res.success) {
                         state.frameCount = res.frame;
+                        if (res.width && res.width > state.maxFrameWidth) state.maxFrameWidth = res.width;
+                        if (res.height && res.height > state.maxFrameHeight) state.maxFrameHeight = res.height;
                         el.frameCount.textContent = state.frameCount;
                         animateProgress();
                         log("capture", "Frame #" + res.frame + ": " + res.fileName);
@@ -629,12 +635,24 @@
 
         var sf = state.resScale || 1;
         var vfFilters = [];
-        if (sf > 1) {
-
-            vfFilters.push("scale=iw/" + sf + ":ih/" + sf);
+        
+        if (state.maxFrameWidth > 0 && state.maxFrameHeight > 0) {
+            var tw = Math.round(state.maxFrameWidth / sf);
+            var th = Math.round(state.maxFrameHeight / sf);
+            tw += (tw % 2); // ensure even width for libx264
+            th += (th % 2); // ensure even height
+            // Scale and pad maintaining original aspect ratio
+            vfFilters.push("scale=" + tw + ":" + th + ":force_original_aspect_ratio=decrease");
+            vfFilters.push("pad=" + tw + ":" + th + ":(ow-iw)/2:(oh-ih)/2:color=black");
+            log("info", "[DEBUG] Dynamic resize. Max: " + state.maxFrameWidth + "x" + state.maxFrameHeight + " -> filter: " + vfFilters.join(","));
+        } else {
+            // fallback
+            if (sf > 1) {
+                vfFilters.push("scale=iw/" + sf + ":ih/" + sf);
+            }
+            vfFilters.push("crop=trunc(iw/2)*2:trunc(ih/2)*2");
+            log("info", "[DEBUG] Fallback resize used. Max: " + state.maxFrameWidth + "x" + state.maxFrameHeight);
         }
-
-        vfFilters.push("crop=trunc(iw/2)*2:trunc(ih/2)*2");
 
         // Always apply smooth transitions (crossfade)
         vfFilters.push("framerate=fps=30:interp_start=0:interp_end=255:scene=100");
