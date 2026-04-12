@@ -64,7 +64,10 @@ Write-Log "Created backup at $backupFile"
 $zipUrl = "https://github.com/$RepoOwner/$RepoName/archive/refs/heads/main.zip"
 $tempZip = Join-Path $env:TEMP "plugin_update_$timestamp.zip"
 try {
+    Write-Log "Downloading update... (GitHub doesn't provide file size, so percentage is unknown)"
+    $ProgressPreference = 'SilentlyContinue'
     Invoke-WebRequest -Uri $zipUrl -OutFile $tempZip -UseBasicParsing
+    $ProgressPreference = 'Continue'
     Write-Log "Downloaded zip to $tempZip"
 } catch {
     Write-Log "Failed to download zip: $_"
