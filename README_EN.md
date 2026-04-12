@@ -11,6 +11,7 @@ A timelapse and speedpaint recorder for Adobe Photoshop. It automatically saves 
 - **Background Mouse Tracking**: Detects active brush strokes and defers capturing until the stroke is finished to prevent drawing lag or broken lines.
 - **Auto-Encoding**: Automatically compiles the captured frames into a high-quality video using FFmpeg as soon as you stop recording.
 - **Customizable Settings**: Adjust framing interval, video format, frame hold duration (playback speed), and resolution scale.
+- **Multi-Language Support**: Choose between English, Russian, and Chinese languages on the fly without restarting the panel.
 
 ---
 
