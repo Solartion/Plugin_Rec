@@ -48,8 +48,14 @@ $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $backupPath = Join-Path $PluginDir $BackupDir
 if (-not (Test-Path $backupPath)) { New-Item -ItemType Directory -Path $backupPath | Out-Null }
 $backupFile = Join-Path $backupPath "backup_$timestamp.zip"
+$tempBackup = Join-Path $env:TEMP "backup_$timestamp.zip"
+
+# If an old temp file exists, remove it
+if (Test-Path $tempBackup) { Remove-Item $tempBackup -Force }
+
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-[System.IO.Compression.ZipFile]::CreateFromDirectory($PluginDir, $backupFile)
+[System.IO.Compression.ZipFile]::CreateFromDirectory($PluginDir, $tempBackup)
+Move-Item -Path $tempBackup -Destination $backupFile -Force
 Write-Log "Created backup at $backupFile"
 
 # Download latest zip
