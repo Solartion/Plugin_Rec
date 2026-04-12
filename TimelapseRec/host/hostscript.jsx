@@ -136,7 +136,9 @@ function captureFrame(outputFolder, frameNumber, quality, scaleFactor, force, re
 
         return '{"success":true,"frame":' + frameNumber +
             ',"path":"' + escStr(file.fsName) +
-            '","fileName":"' + escStr(fileName) + '"}';
+            '","width":' + doc.width.as("px") +
+            ',"height":' + doc.height.as("px") +
+            ',"fileName":"' + escStr(fileName) + '"}';
     } catch (e) {
         try { app.displayDialogs = originalDialogMode; } catch (x) { }
         return '{"error":"CAPTURE_ERROR","message":"' + escStr(e.message) + '","frame":' + frameNumber + '}';
