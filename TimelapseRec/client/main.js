@@ -463,26 +463,58 @@
     function onStopClick() {
         if (!state.recording) return;
 
-        state.recording = false;
-        state.paused = false;
-        state.captureBusy = false;
-        state.recordingDocName = "";
-        stopMouseWatcher();
-
+        // Stop timers first
         var clrInt = nodeTimers ? nodeTimers.clearInterval : clearInterval;
         clrInt(state.elapsedTimer);
         state.elapsedTimer = null;
         clrInt(state.captureTimer);
         state.captureTimer = null;
 
-        updateUI("idle");
-        log("success", "Recording stopped. Frames: " + state.frameCount);
+        stopMouseWatcher();
 
-        if (state.frameCount > 0) {
-            encodeVideo();
-        } else {
-            log("warning", "No frames to encode");
-        }
+        // Perform one final forced capture before stopping
+        var folder = escapeForScript(state.sessionFolder);
+        var q = 4;
+        var sf = state.resScale || 1;
+        var docName = escapeForScript(state.recordingDocName);
+        var finalFrameNum = state.frameCount + 1;
+        var script = 'captureFrame("' + folder + '", ' + finalFrameNum + ', ' + q + ', ' + sf + ', false, "' + docName + '")';
+
+        // Mark as stopped
+        state.recording = false;
+        state.paused = false;
+        state.captureBusy = false;
+        state.recordingDocName = "";
+
+        updateUI("idle");
+
+        // Try to capture final frame, then encode with delay
+        evalScript(script, function (result) {
+            try {
+                if (result && result !== "undefined" && result !== "EvalScript error") {
+                    var res = JSON.parse(result);
+                    if (res.success) {
+                        state.frameCount = res.frame;
+                        if (res.width && res.width > state.maxFrameWidth) state.maxFrameWidth = res.width;
+                        if (res.height && res.height > state.maxFrameHeight) state.maxFrameHeight = res.height;
+                        el.frameCount.textContent = state.frameCount;
+                        log("capture", "Final frame #" + res.frame + ": " + res.fileName);
+                    }
+                }
+            } catch (e) { }
+
+            log("success", "Recording stopped. Frames: " + state.frameCount);
+
+            // Delay encoding slightly to ensure all files are flushed to disk
+            var setTO = nodeTimers ? nodeTimers.setTimeout : setTimeout;
+            setTO(function () {
+                if (state.frameCount > 0) {
+                    encodeVideo();
+                } else {
+                    log("warning", "No frames to encode");
+                }
+            }, 1000);
+        });
     }
 
     function startMouseWatcher() {
@@ -536,8 +568,8 @@
 
 
         if (state.captureBusy) {
-            if (Date.now() - state.captureLastTime > 30000) {
-                log("warning", "Capture hung >30s, resetting...");
+            if (Date.now() - state.captureLastTime > 10000) {
+                log("warning", "Capture hung >10s, resetting...");
                 state.captureBusy = false;
             } else {
                 return;
