@@ -67,7 +67,8 @@ function selectFolder() {
 
 var _lastHistoryId = null;
 var _noChangeCount = 0;
-var _MAX_SKIP = 5; // force capture after this many consecutive NO_CHANGE skips
+var _MAX_SKIP = 1; // force capture after just 1 NO_CHANGE skip
+var _captureGen = 0; // increments after each real capture, ensures fingerprint uniqueness
 
 function _saveJpegFast(file, q) {
     var idsave = charIDToTypeID("save");
@@ -108,34 +109,50 @@ function captureFrame(outputFolder, frameNumber, quality, scaleFactor, force, re
         app.displayDialogs = DialogModes.NO;
 
         try {
-            // Build fingerprint from multiple history state names
-            // When the history buffer is full and rolls over, old states are dropped
-            // changing the overall fingerprint even if the latest action name repeats
-            var hsLen = doc.historyStates.length;
+            // Build rich fingerprint from multiple document properties
             var histParts = [];
-            var sampleCount = Math.min(hsLen, 10); // sample up to 10 states
+
+            // 1. Sample history state names
+            var hsLen = doc.historyStates.length;
+            var sampleCount = Math.min(hsLen, 6);
             var step = Math.max(1, Math.floor(hsLen / sampleCount));
             for (var si = 0; si < hsLen; si += step) {
                 try { histParts.push(doc.historyStates[si].name); } catch(hse) {}
             }
-            // Always include the very last state
-            try { histParts.push(doc.activeHistoryState.name); } catch(hse2) {}
             histParts.push(String(hsLen));
+
+            // 2. Active layer name (detects layer switching)
+            try { histParts.push(doc.activeLayer.name); } catch(le) {}
+
+            // 3. Layer count (detects add/delete layers)
+            try { histParts.push("L" + doc.layers.length); } catch(lce) {}
+
+            // 4. Doc dimensions (detects crop/resize)
+            try { histParts.push(String(doc.width.as("px")) + "x" + String(doc.height.as("px"))); } catch(de) {}
+
+            // 5. Capture generation counter - makes fingerprint unique after each real capture
+            // This is the key: even if history looks identical, the counter ensures
+            // we never skip more than _MAX_SKIP consecutive captures
+            histParts.push("g" + _captureGen);
+
             var histId = histParts.join("|");
 
             if (!force && _lastHistoryId === histId) {
                 _noChangeCount++;
-                // Safety net: force capture after too many consecutive skips
                 if (_noChangeCount < _MAX_SKIP) {
                     app.displayDialogs = savedDialogs;
                     return '{"error":"NO_CHANGE"}';
                 }
-                // Exceeded max skips, force capture this time
+                // Exceeded max skip, force capture
                 _noChangeCount = 0;
             } else {
                 _noChangeCount = 0;
             }
-            _lastHistoryId = histId;
+
+            // Increment generation and update fingerprint with new generation
+            _captureGen++;
+            histParts[histParts.length - 1] = "g" + _captureGen;
+            _lastHistoryId = histParts.join("|");
         } catch (he) { }
 
         var padded = ("00000" + frameNumber).slice(-5);
