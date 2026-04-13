@@ -66,6 +66,8 @@ function selectFolder() {
 }
 
 var _lastHistoryId = null;
+var _noChangeCount = 0;
+var _MAX_SKIP = 5; // force capture after this many consecutive NO_CHANGE skips
 
 function _saveJpegFast(file, q) {
     var idsave = charIDToTypeID("save");
@@ -106,10 +108,32 @@ function captureFrame(outputFolder, frameNumber, quality, scaleFactor, force, re
         app.displayDialogs = DialogModes.NO;
 
         try {
-            var histId = doc.activeHistoryState.name + "_" + doc.historyStates.length;
+            // Build fingerprint from multiple history state names
+            // When the history buffer is full and rolls over, old states are dropped
+            // changing the overall fingerprint even if the latest action name repeats
+            var hsLen = doc.historyStates.length;
+            var histParts = [];
+            var sampleCount = Math.min(hsLen, 10); // sample up to 10 states
+            var step = Math.max(1, Math.floor(hsLen / sampleCount));
+            for (var si = 0; si < hsLen; si += step) {
+                try { histParts.push(doc.historyStates[si].name); } catch(hse) {}
+            }
+            // Always include the very last state
+            try { histParts.push(doc.activeHistoryState.name); } catch(hse2) {}
+            histParts.push(String(hsLen));
+            var histId = histParts.join("|");
+
             if (!force && _lastHistoryId === histId) {
-                app.displayDialogs = savedDialogs;
-                return '{"error":"NO_CHANGE"}';
+                _noChangeCount++;
+                // Safety net: force capture after too many consecutive skips
+                if (_noChangeCount < _MAX_SKIP) {
+                    app.displayDialogs = savedDialogs;
+                    return '{"error":"NO_CHANGE"}';
+                }
+                // Exceeded max skips, force capture this time
+                _noChangeCount = 0;
+            } else {
+                _noChangeCount = 0;
             }
             _lastHistoryId = histId;
         } catch (he) { }
