@@ -431,9 +431,8 @@
 
                 state.captureBusy = false;
                 state.captureLastTime = Date.now();
-                var setInt2 = nodeTimers ? nodeTimers.setInterval : setInterval;
-                state.captureTimer = setInt2(captureLoop, state.intervalMs);
 
+                // First capture immediately, then self-scheduling via setTimeout
                 captureLoop();
 
                 var setInt = nodeTimers ? nodeTimers.setInterval : setInterval;
@@ -467,7 +466,8 @@
         var clrInt = nodeTimers ? nodeTimers.clearInterval : clearInterval;
         clrInt(state.elapsedTimer);
         state.elapsedTimer = null;
-        clrInt(state.captureTimer);
+        var clrTO = nodeTimers ? nodeTimers.clearTimeout : clearTimeout;
+        clrTO(state.captureTimer);
         state.captureTimer = null;
 
         stopMouseWatcher();
@@ -564,20 +564,13 @@
     function captureLoop() {
         if (!state.recording || state.paused) return;
 
-        if (state.mouseDown) return;
-
-
-        if (state.captureBusy) {
-            if (Date.now() - state.captureLastTime > 10000) {
-                log("warning", "Capture hung >10s, resetting...");
-                state.captureBusy = false;
-            } else {
-                return;
-            }
+        if (state.mouseDown) {
+            // User is drawing, skip this tick but schedule next check quickly
+            scheduleNextCapture(500);
+            return;
         }
 
-        state.captureBusy = true;
-        state.captureLastTime = Date.now();
+        var captureStartTime = Date.now();
 
         var folder = escapeForScript(state.sessionFolder);
         var q = 4;
@@ -588,9 +581,6 @@
         var script = 'captureFrame("' + folder + '", ' + (state.frameCount + 1) + ', ' + q + ', ' + sf + ', ' + isFirst + ', "' + docName + '")';
 
         evalScript(script, function (result) {
-
-            var setTO = nodeTimers ? nodeTimers.setTimeout : setTimeout;
-            setTO(function () { state.captureBusy = false; }, 500);
             if (!state.recording) return;
 
             try {
@@ -614,7 +604,35 @@
             } catch (e) {
                 log("error", "Parse err: " + e.message + " | Raw: " + String(result).substring(0, 50));
             }
+
+            // Schedule next capture: wait remaining interval time, minimum 500ms
+            var elapsed = Date.now() - captureStartTime;
+            var nextDelay = Math.max(500, state.intervalMs - elapsed);
+            scheduleNextCapture(nextDelay);
         });
+
+        // Safety net: if evalScript never calls back (PS hung), force next attempt
+        var setTO = nodeTimers ? nodeTimers.setTimeout : setTimeout;
+        setTO(function () {
+            if (state.recording && !state.captureTimer) {
+                log("warning", "Capture callback timeout, scheduling retry...");
+                scheduleNextCapture(1000);
+            }
+        }, 15000);
+    }
+
+    function scheduleNextCapture(delayMs) {
+        if (!state.recording) return;
+        // Clear any existing scheduled capture
+        if (state.captureTimer) {
+            var clrTO = nodeTimers ? nodeTimers.clearTimeout : clearTimeout;
+            clrTO(state.captureTimer);
+        }
+        var setTO = nodeTimers ? nodeTimers.setTimeout : setTimeout;
+        state.captureTimer = setTO(function () {
+            state.captureTimer = null;
+            captureLoop();
+        }, delayMs);
     }
 
     function encodeVideo() {
