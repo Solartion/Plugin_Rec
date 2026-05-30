@@ -95,26 +95,29 @@ function _saveJpegFallback(doc, file, q) {
     doc.saveAs(file, jpegOpts, true, Extension.LOWERCASE);
 }
 
-function _captureResized(doc, file, quality, targetW, targetH) {
-    var tempDoc = doc.duplicate("_tlrec_temp", true);
-    try {
-        try { tempDoc.flatten(); } catch(fe) {}
-        try {
-            tempDoc.resizeImage(UnitValue(targetW, "px"), UnitValue(targetH, "px"), undefined, ResampleMethod.BILINEAR);
-        } catch(re) {
-            tempDoc.resizeImage(UnitValue(targetW, "px"), UnitValue(targetH, "px"), undefined, ResampleMethod.BICUBIC);
-        }
-        try {
-            _saveJpegFast(file, quality);
-        } catch (se) {
-            _saveJpegFallback(tempDoc, file, quality);
-        }
-        tempDoc.close(SaveOptions.DONOTSAVECHANGES);
-    } catch(e) {
-        try { tempDoc.close(SaveOptions.DONOTSAVECHANGES); } catch(ce) {}
-        throw e;
-    }
+function _captureResized(doc, file, quality, targetW, targetH, origW) {
+    var scalePercent = (targetW / origW) * 100;
+    if (scalePercent < 0.1) scalePercent = 0.1;
+    if (scalePercent > 100) scalePercent = 100;
+
+    var q100 = Math.round(quality * 100 / 12);
+    if (q100 < 1) q100 = 1;
+    if (q100 > 100) q100 = 100;
+
+    var desc = new ActionDescriptor();
+    var expDesc = new ActionDescriptor();
+    expDesc.putEnumerated(charIDToTypeID("Fmt "), charIDToTypeID("IRFm"), charIDToTypeID("JPEG"));
+    expDesc.putInteger(charIDToTypeID("Qlt "), q100);
+    
+    // Scale on-the-fly inside the SaveForWeb export buffer (no document changes, extremely fast!)
+    expDesc.putUnitDouble(charIDToTypeID("HScl"), charIDToTypeID("#Prc"), scalePercent);
+    expDesc.putUnitDouble(charIDToTypeID("VScl"), charIDToTypeID("#Prc"), scalePercent);
+
+    desc.putObject(charIDToTypeID("Usng"), stringIDToTypeID("SaveForWeb"), expDesc);
+    desc.putPath(charIDToTypeID("In  "), file);
+    executeAction(stringIDToTypeID("Export"), desc, DialogModes.NO);
 }
+
 
 function captureFrame(outputFolder, frameNumber, quality, scaleFactor, force, recordingDocName) {
     try {
@@ -207,7 +210,7 @@ function captureFrame(outputFolder, frameNumber, quality, scaleFactor, force, re
             th = Math.max(64, th);
 
             try {
-                _captureResized(doc, file, q, tw, th);
+                _captureResized(doc, file, q, tw, th, origW);
                 savedW = tw;
                 savedH = th;
             } catch (resizeErr) {
