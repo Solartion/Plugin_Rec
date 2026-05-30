@@ -65,6 +65,8 @@ function selectFolder() {
     }
 }
 
+var _AUTO_MAX_SIDE = 2048;
+
 var _lastHistoryId = null;
 var _noChangeCount = 0;
 var _MAX_SKIP = 1; // force capture after just 1 NO_CHANGE skip
@@ -91,6 +93,27 @@ function _saveJpegFallback(doc, file, q) {
     jpegOpts.embedColorProfile = false;
     jpegOpts.formatOptions = FormatOptions.STANDARDBASELINE;
     doc.saveAs(file, jpegOpts, true, Extension.LOWERCASE);
+}
+
+function _captureResized(doc, file, quality, targetW, targetH) {
+    var tempDoc = doc.duplicate("_tlrec_temp", true);
+    try {
+        try { tempDoc.flatten(); } catch(fe) {}
+        try {
+            tempDoc.resizeImage(UnitValue(targetW, "px"), UnitValue(targetH, "px"), undefined, ResampleMethod.BILINEAR);
+        } catch(re) {
+            tempDoc.resizeImage(UnitValue(targetW, "px"), UnitValue(targetH, "px"), undefined, ResampleMethod.BICUBIC);
+        }
+        try {
+            _saveJpegFast(file, quality);
+        } catch (se) {
+            _saveJpegFallback(tempDoc, file, quality);
+        }
+        tempDoc.close(SaveOptions.DONOTSAVECHANGES);
+    } catch(e) {
+        try { tempDoc.close(SaveOptions.DONOTSAVECHANGES); } catch(ce) {}
+        throw e;
+    }
 }
 
 function captureFrame(outputFolder, frameNumber, quality, scaleFactor, force, recordingDocName) {
@@ -162,26 +185,62 @@ function captureFrame(outputFolder, frameNumber, quality, scaleFactor, force, re
         var q = (quality && quality > 0) ? quality : 5;
         if (q > 12) { q = Math.round(q * 12 / 100); }
 
-        try {
-            _saveJpegFast(file, q);
-        } catch (se) {
+        var origW = Math.round(Number(doc.width.as("px")));
+        var origH = Math.round(Number(doc.height.as("px")));
+        var savedW = origW;
+        var savedH = origH;
+
+        var sf = (scaleFactor && scaleFactor > 1) ? scaleFactor : 1;
+        var needResize = (sf > 1) || (origW * origH > 4000000);
+
+        if (needResize) {
+            var tw = Math.round(origW / sf);
+            var th = Math.round(origH / sf);
+
+            var longest = Math.max(tw, th);
+            if (longest > _AUTO_MAX_SIDE) {
+                var ratio = _AUTO_MAX_SIDE / longest;
+                tw = Math.round(tw * ratio);
+                th = Math.round(th * ratio);
+            }
+            tw = Math.max(64, tw);
+            th = Math.max(64, th);
+
             try {
-                _saveJpegFallback(doc, file, q);
-            } catch (saveErr) {
-                app.displayDialogs = savedDialogs;
-                return '{"error":"SAVE_ERROR","message":"' + escStr(saveErr.message) + '"}';
+                _captureResized(doc, file, q, tw, th);
+                savedW = tw;
+                savedH = th;
+            } catch (resizeErr) {
+                try {
+                    _saveJpegFast(file, q);
+                } catch (se2) {
+                    try {
+                        _saveJpegFallback(doc, file, q);
+                    } catch (saveErr) {
+                        app.displayDialogs = savedDialogs;
+                        return '{"error":"SAVE_ERROR","message":"' + escStr(saveErr.message) + '"}';
+                    }
+                }
+            }
+        } else {
+            try {
+                _saveJpegFast(file, q);
+            } catch (se) {
+                try {
+                    _saveJpegFallback(doc, file, q);
+                } catch (saveErr) {
+                    app.displayDialogs = savedDialogs;
+                    return '{"error":"SAVE_ERROR","message":"' + escStr(saveErr.message) + '"}';
+                }
             }
         }
 
         app.displayDialogs = savedDialogs;
 
-        var docW = Math.round(Number(doc.width.as("px")));
-        var docH = Math.round(Number(doc.height.as("px")));
-
         return '{"success":true,"frame":' + frameNumber +
             ',"path":"' + escStr(file.fsName) +
-            '","width":' + docW +
-            ',"height":' + docH +
+            '","width":' + savedW +
+            ',"height":' + savedH +
             ',"fileName":"' + escStr(fileName) + '"}';
     } catch (e) {
         try { app.displayDialogs = originalDialogMode; } catch (x) { }

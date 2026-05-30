@@ -48,6 +48,7 @@
         cropBottom: 0,
         recordingDocName: "",
         mouseDown: false,
+        mouseUpTime: 0,
         mouseWatcher: null,
         updating: false,
         pendingUpdateSha: ""
@@ -537,7 +538,11 @@
 
                 var lines = line.split("\n");
                 var last = lines[lines.length - 1].trim();
+                var wasDown = state.mouseDown;
                 state.mouseDown = (last === "DOWN");
+                if (wasDown && !state.mouseDown) {
+                    state.mouseUpTime = Date.now();
+                }
             });
 
             state.mouseWatcher.on("error", function () {
@@ -568,6 +573,13 @@
         if (state.mouseDown) {
             // User is drawing, skip this tick but schedule next check quickly
             scheduleNextCapture(500);
+            return;
+        }
+
+        // Wait 300ms after mouse-up to let PS finish rendering the stroke
+        var MOUSEUP_COOLDOWN = 300;
+        if (state.mouseUpTime && (Date.now() - state.mouseUpTime) < MOUSEUP_COOLDOWN) {
+            scheduleNextCapture(MOUSEUP_COOLDOWN - (Date.now() - state.mouseUpTime));
             return;
         }
 
@@ -686,25 +698,20 @@
             "-pix_fmt", codec.pix
         ];
 
-        var sf = state.resScale || 1;
         var vfFilters = [];
         
         if (state.maxFrameWidth > 0 && state.maxFrameHeight > 0) {
-            var tw = Math.round(state.maxFrameWidth / sf);
-            var th = Math.round(state.maxFrameHeight / sf);
+            var tw = state.maxFrameWidth;
+            var th = state.maxFrameHeight;
             tw += (tw % 2); // ensure even width for libx264
             th += (th % 2); // ensure even height
-            // Scale and pad maintaining original aspect ratio
+            // Scale and pad maintaining original aspect ratio (frames already pre-scaled during capture)
             vfFilters.push("scale=" + tw + ":" + th + ":force_original_aspect_ratio=decrease");
             vfFilters.push("pad=" + tw + ":" + th + ":(ow-iw)/2:(oh-ih)/2:color=black");
-            log("info", "[DEBUG] Dynamic resize. Max: " + state.maxFrameWidth + "x" + state.maxFrameHeight + " -> filter: " + vfFilters.join(","));
+            log("info", "Encode target: " + tw + "x" + th);
         } else {
-            // fallback
-            if (sf > 1) {
-                vfFilters.push("scale=iw/" + sf + ":ih/" + sf);
-            }
+            // fallback: just ensure even dimensions
             vfFilters.push("crop=trunc(iw/2)*2:trunc(ih/2)*2");
-            log("info", "[DEBUG] Fallback resize used. Max: " + state.maxFrameWidth + "x" + state.maxFrameHeight);
         }
 
         // Always apply smooth transitions (crossfade)
@@ -819,12 +826,8 @@
         el.intervalValue.textContent = val;
         state.intervalMs = val * 1000;
         saveSettings();
-        if (state.recording && state.captureTimer) {
-
-            var clrInt = nodeTimers ? nodeTimers.clearInterval : clearInterval;
-            clrInt(state.captureTimer);
-            var setInt = nodeTimers ? nodeTimers.setInterval : setInterval;
-            state.captureTimer = setInt(captureLoop, state.intervalMs);
+        if (state.recording) {
+            scheduleNextCapture(state.intervalMs);
             log("info", "Interval changed: " + val + "s");
         }
     }
