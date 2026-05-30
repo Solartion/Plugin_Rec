@@ -118,6 +118,11 @@
         csInterface.addEventListener("documentAfterActivate", refreshDocInfo);
         csInterface.addEventListener("documentAfterDeactivate", refreshDocInfo);
 
+        // Prevent the extension from sleeping or unloading when the panel is hidden/collapsed
+        var persistentEvent = new CSEvent("com.adobe.PhotoshopPersistent", "APPLICATION");
+        persistentEvent.extensionId = csInterface.getExtensionID();
+        csInterface.dispatchEvent(persistentEvent);
+
         if (childProcess) {
             setTimeout(detectFFmpeg, 2000);
         }
