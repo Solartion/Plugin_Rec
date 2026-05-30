@@ -17,8 +17,8 @@ function getDocumentInfo() {
             return '{"error":"NO_DOCUMENT","message":"No open document"}';
         }
         var doc = app.activeDocument;
-        var w = doc.width.as("px");
-        var h = doc.height.as("px");
+        var w = Math.round(Number(doc.width.as("px")));
+        var h = Math.round(Number(doc.height.as("px")));
         var res = doc.resolution;
         var layers = doc.layers.length;
         var docName = escStr(doc.name);
@@ -128,7 +128,7 @@ function captureFrame(outputFolder, frameNumber, quality, scaleFactor, force, re
             try { histParts.push("L" + doc.layers.length); } catch(lce) {}
 
             // 4. Doc dimensions (detects crop/resize)
-            try { histParts.push(String(doc.width.as("px")) + "x" + String(doc.height.as("px"))); } catch(de) {}
+            try { histParts.push(Math.round(Number(doc.width.as("px"))) + "x" + Math.round(Number(doc.height.as("px")))); } catch(de) {}
 
             // 5. Capture generation counter - makes fingerprint unique after each real capture
             // This is the key: even if history looks identical, the counter ensures
@@ -175,10 +175,13 @@ function captureFrame(outputFolder, frameNumber, quality, scaleFactor, force, re
 
         app.displayDialogs = savedDialogs;
 
+        var docW = Math.round(Number(doc.width.as("px")));
+        var docH = Math.round(Number(doc.height.as("px")));
+
         return '{"success":true,"frame":' + frameNumber +
             ',"path":"' + escStr(file.fsName) +
-            '","width":' + doc.width.as("px") +
-            ',"height":' + doc.height.as("px") +
+            '","width":' + docW +
+            ',"height":' + docH +
             ',"fileName":"' + escStr(fileName) + '"}';
     } catch (e) {
         try { app.displayDialogs = originalDialogMode; } catch (x) { }

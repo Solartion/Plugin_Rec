@@ -416,8 +416,9 @@
                 state.recording = true;
                 state.paused = false;
                 state.frameCount = 0;
-                state.maxFrameWidth = docInfo.width || 0;
-                state.maxFrameHeight = docInfo.height || 0;
+                state.maxFrameWidth = parseInt(docInfo.width, 10) || 0;
+                state.maxFrameHeight = parseInt(docInfo.height, 10) || 0;
+                log("info", "[DEBUG] Initial doc size: " + state.maxFrameWidth + "x" + state.maxFrameHeight);
                 state.startTime = Date.now();
                 state.pausedTime = 0;
                 state.sessionFolder = res.path;
@@ -592,8 +593,10 @@
                         }
                     } else if (res.success) {
                         state.frameCount = res.frame;
-                        if (res.width && res.width > state.maxFrameWidth) state.maxFrameWidth = res.width;
-                        if (res.height && res.height > state.maxFrameHeight) state.maxFrameHeight = res.height;
+                        var fw = parseInt(res.width, 10) || 0;
+                        var fh = parseInt(res.height, 10) || 0;
+                        if (fw > state.maxFrameWidth) state.maxFrameWidth = fw;
+                        if (fh > state.maxFrameHeight) state.maxFrameHeight = fh;
                         el.frameCount.textContent = state.frameCount;
                         animateProgress();
                         log("capture", "Frame #" + res.frame + ": " + res.fileName);
