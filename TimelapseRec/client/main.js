@@ -738,6 +738,7 @@
         var inputFps = String(Math.round(1 / state.frameHold * 100) / 100);
         var args = [
             "-y",
+            "-reinit_filter", "1",
             "-start_number", "1",
             "-framerate", inputFps,
             "-i", inputPattern,
@@ -753,9 +754,10 @@
             var th = state.maxFrameHeight;
             tw += (tw % 2); // ensure even width for libx264
             th += (th % 2); // ensure even height
-            // Scale and pad maintaining original aspect ratio (frames already pre-scaled during capture)
-            vfFilters.push("scale=" + tw + ":" + th + ":force_original_aspect_ratio=decrease");
-            vfFilters.push("pad=" + tw + ":" + th + ":(ow-iw)/2:(oh-ih)/2:color=black");
+            // Scale and pad maintaining original aspect ratio (eval=frame handles varying input frame sizes without stretching)
+            vfFilters.push("scale=" + tw + ":" + th + ":force_original_aspect_ratio=decrease:eval=frame");
+            vfFilters.push("pad=" + tw + ":" + th + ":(ow-iw)/2:(oh-ih)/2:color=black:eval=frame");
+            vfFilters.push("setsar=1");
             log("info", "Encode target: " + tw + "x" + th);
         } else {
             // fallback: just ensure even dimensions
