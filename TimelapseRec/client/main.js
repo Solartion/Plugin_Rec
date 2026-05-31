@@ -47,9 +47,6 @@
         cropRight: 0,
         cropBottom: 0,
         recordingDocName: "",
-        mouseDown: false,
-        mouseUpTime: 0,
-        mouseWatcher: null,
         updating: false,
         pendingUpdateSha: ""
     };
@@ -135,7 +132,6 @@
         window.addEventListener("beforeunload", function () {
             var clrInt = nodeTimers ? nodeTimers.clearInterval : clearInterval;
             if (state.captureTimer) clrInt(state.captureTimer);
-            stopMouseWatcher();
         });
 
         log("info", "Timelapse Rec v2.0 loaded.");
@@ -434,8 +430,6 @@
                 log("success", "Recording started: " + state.sessionName);
                 log("info", "Interval: " + (state.intervalMs / 1000) + "s | Format: " + state.videoFormat.toUpperCase() + " | Doc: " + docInfo.name + " | Smooth ON");
 
-                startMouseWatcher();
-
                 state.captureBusy = false;
                 state.captureLastTime = Date.now();
 
@@ -512,8 +506,6 @@
         clrTO(state.captureTimer);
         state.captureTimer = null;
 
-        stopMouseWatcher();
-
         // Mark as stopped
         state.recording = false;
         state.paused = false;
@@ -567,69 +559,8 @@
         }
     }
 
-    function startMouseWatcher() {
-        if (!childProcess) return;
-        try {
-            var scriptPath = path.resolve(__dirname || ".", "..", "tools", "mouse_watcher.ps1");
-            if (!fs.existsSync(scriptPath)) {
-                log("warning", "mouse_watcher.ps1 not found, drawing detection disabled");
-                return;
-            }
-            state.mouseWatcher = childProcess.spawn("powershell.exe", [
-                "-ExecutionPolicy", "Bypass",
-                "-NoProfile",
-                "-File", scriptPath
-            ], { windowsHide: true });
-
-            state.mouseWatcher.stdout.on("data", function (data) {
-                var line = data.toString().trim();
-
-                var lines = line.split("\n");
-                var last = lines[lines.length - 1].trim();
-                var wasDown = state.mouseDown;
-                state.mouseDown = (last === "DOWN");
-                if (wasDown && !state.mouseDown) {
-                    state.mouseUpTime = Date.now();
-                }
-            });
-
-            state.mouseWatcher.on("error", function () {
-                state.mouseDown = false;
-                state.mouseWatcher = null;
-            });
-
-            state.mouseWatcher.on("close", function () {
-                state.mouseDown = false;
-                state.mouseWatcher = null;
-            });
-        } catch (e) {
-            log("warning", "Mouse watcher failed: " + e.message);
-        }
-    }
-
-    function stopMouseWatcher() {
-        if (state.mouseWatcher) {
-            try { state.mouseWatcher.kill(); } catch (e) { }
-            state.mouseWatcher = null;
-            state.mouseDown = false;
-        }
-    }
-
     function captureLoop() {
         if (!state.recording || state.paused) return;
-
-        if (state.mouseDown) {
-            // User is drawing, skip this tick but schedule next check quickly
-            scheduleNextCapture(500);
-            return;
-        }
-
-        // Wait 300ms after mouse-up to let PS finish rendering the stroke
-        var MOUSEUP_COOLDOWN = 300;
-        if (state.mouseUpTime && (Date.now() - state.mouseUpTime) < MOUSEUP_COOLDOWN) {
-            scheduleNextCapture(MOUSEUP_COOLDOWN - (Date.now() - state.mouseUpTime));
-            return;
-        }
 
         var captureStartTime = Date.now();
 
