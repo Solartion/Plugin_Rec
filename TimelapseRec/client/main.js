@@ -458,16 +458,51 @@
             state.pauseStart = null;
             updateUI("recording");
             log("info", "Recording resumed");
+
+            // Resume the capture loop immediately on unpause
+            captureLoop();
         } else {
             state.paused = true;
             state.pauseStart = Date.now();
             updateUI("paused");
             log("warning", "Recording paused");
+
+            // Clear any pending capture timers to avoid duplicate concurrent loops
+            if (state.captureTimer) {
+                var clrTO = nodeTimers ? nodeTimers.clearTimeout : clearTimeout;
+                clrTO(state.captureTimer);
+                state.captureTimer = null;
+            }
+
+            // Capture one final frame immediately for the pause state (forced capture)
+            var folder = escapeForScript(state.sessionFolder);
+            var q = 4;
+            var sf = state.resScale || 1;
+            var docName = escapeForScript(state.recordingDocName);
+            var finalFrameNum = state.frameCount + 1;
+            var script = 'captureFrame("' + folder + '", ' + finalFrameNum + ', ' + q + ', ' + sf + ', true, "' + docName + '")';
+
+            evalScript(script, function (result) {
+                try {
+                    if (result && result !== "undefined" && result !== "EvalScript error") {
+                        var res = JSON.parse(result);
+                        if (res.success) {
+                            state.frameCount = res.frame;
+                            if (res.width && res.width > state.maxFrameWidth) state.maxFrameWidth = res.width;
+                            if (res.height && res.height > state.maxFrameHeight) state.maxFrameHeight = res.height;
+                            el.frameCount.textContent = state.frameCount;
+                            log("capture", "Pause frame #" + res.frame + ": " + res.fileName);
+                        }
+                    }
+                } catch (e) { }
+            });
         }
     }
 
     function onStopClick() {
         if (!state.recording) return;
+
+        var wasPaused = state.paused;
 
         // Stop timers first
         var clrInt = nodeTimers ? nodeTimers.clearInterval : clearInterval;
@@ -479,14 +514,6 @@
 
         stopMouseWatcher();
 
-        // Perform one final forced capture before stopping
-        var folder = escapeForScript(state.sessionFolder);
-        var q = 4;
-        var sf = state.resScale || 1;
-        var docName = escapeForScript(state.recordingDocName);
-        var finalFrameNum = state.frameCount + 1;
-        var script = 'captureFrame("' + folder + '", ' + finalFrameNum + ', ' + q + ', ' + sf + ', false, "' + docName + '")';
-
         // Mark as stopped
         state.recording = false;
         state.paused = false;
@@ -495,21 +522,7 @@
 
         updateUI("idle");
 
-        // Try to capture final frame, then encode with delay
-        evalScript(script, function (result) {
-            try {
-                if (result && result !== "undefined" && result !== "EvalScript error") {
-                    var res = JSON.parse(result);
-                    if (res.success) {
-                        state.frameCount = res.frame;
-                        if (res.width && res.width > state.maxFrameWidth) state.maxFrameWidth = res.width;
-                        if (res.height && res.height > state.maxFrameHeight) state.maxFrameHeight = res.height;
-                        el.frameCount.textContent = state.frameCount;
-                        log("capture", "Final frame #" + res.frame + ": " + res.fileName);
-                    }
-                }
-            } catch (e) { }
-
+        var finishAndEncode = function () {
             log("success", "Recording stopped. Frames: " + state.frameCount);
 
             // Delay encoding slightly to ensure all files are flushed to disk
@@ -521,7 +534,37 @@
                     log("warning", "No frames to encode");
                 }
             }, 1000);
-        });
+        };
+
+        if (!wasPaused) {
+            // Perform one final forced capture before stopping
+            var folder = escapeForScript(state.sessionFolder);
+            var q = 4;
+            var sf = state.resScale || 1;
+            var docName = escapeForScript(state.recordingDocName);
+            var finalFrameNum = state.frameCount + 1;
+            var script = 'captureFrame("' + folder + '", ' + finalFrameNum + ', ' + q + ', ' + sf + ', true, "' + docName + '")';
+
+            evalScript(script, function (result) {
+                try {
+                    if (result && result !== "undefined" && result !== "EvalScript error") {
+                        var res = JSON.parse(result);
+                        if (res.success) {
+                            state.frameCount = res.frame;
+                            if (res.width && res.width > state.maxFrameWidth) state.maxFrameWidth = res.width;
+                            if (res.height && res.height > state.maxFrameHeight) state.maxFrameHeight = res.height;
+                            el.frameCount.textContent = state.frameCount;
+                            log("capture", "Final frame #" + res.frame + ": " + res.fileName);
+                        }
+                    }
+                } catch (e) { }
+
+                finishAndEncode();
+            });
+        } else {
+            // Already captured the last state when paused, proceed to encode directly
+            finishAndEncode();
+        }
     }
 
     function startMouseWatcher() {
